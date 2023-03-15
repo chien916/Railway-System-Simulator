@@ -3,6 +3,9 @@ import QtQuick.Dialogs 1.3
 Item {
 	implicitHeight: 500
 	implicitWidth: 500
+	property int clockRate_i:Math.floor(pUni_clockRate.actualValue_r)
+	property bool automaticMode_b:pUni_automaticMode.valueratio_r>0.5
+	signal menuButtonClicked(metaInfo_s:string)
 	Rectangle{
 		id:rect_canvas
 		radius: T3Styling.margin_r
@@ -10,7 +13,7 @@ Item {
 		anchors.fill: parent
 		Column{
 			id:colu_column
-			property int count_i :8
+			property int count_i :10
 			readonly property real unitHeight_r
 			:(rect_canvas.height-2*colu_column.anchors.margins
 			  - (count_i-1)*colu_column.spacing)/count_i
@@ -33,40 +36,44 @@ Item {
 				verticalAlignment: Text.AlignVCenter
 			}
 			T3ParamUnit{
+				id:pUni_clockRate
 				width: colu_column.width
-				height: colu_column.unitHeight_r
-				paramConfig_A: "F_F_Clock Rate_x"
-				minValue_r: 0.1
-				maxValue_r: 50
+				height: colu_column.unitHeight_r*2+colu_column.anchors.margins
+				paramConfig_A: "F_F_Clock Rate_0 x"
+				readOnly_b: false
+				minValue_r:1
+				fixedPoint_i: 1
+				valueratio_r: 0
+				maxValue_r: 11
 			}
 			T3ParamUnit{
+				id:pUni_automaticMode
 				width: colu_column.width
-				height: colu_column.unitHeight_r
+				height: colu_column.unitHeight_r*2+colu_column.anchors.margins
+				readOnly_b: false
 				paramConfig_A: "F_T_Automatic Mode_"
 			}
 			T3Button{
 				width: colu_column.width
 				height: colu_column.unitHeight_r
-				buttonLabel_s: "Load line"
-			}
-			T3Button{
-				width: colu_column.width
-				height: colu_column.unitHeight_r
 				buttonLabel_s: "Load time schedule"
+				onButtonClicked: menuButtonClicked("loadTimeSchedule")
 			}
 			T3Button{
 				width: colu_column.width
 				height: colu_column.unitHeight_r
 				buttonLabel_s: "Manually Dispatch"
+				onButtonClicked: menuButtonClicked("manuallyDispatch")
 			}
 			T3Button{
 				width: colu_column.width
 				height: colu_column.unitHeight_r
 				buttonLabel_s: "Debugging Interface"
 				onButtonClicked: {
-					var component = Qt.createComponent("qrc:/T3CTCTestInterface.qml")
-					var window    = component.createObject(root)
-					window.show()
+					Qt.openUrlExternally("https://console.firebase.google.com/project/sprn2023-ece1140/database/sprn2023-ece1140-default-rtdb/data")
+//					var component = Qt.createComponent("qrc:/T3CTCTestInterface.qml")
+//					var window    = component.createObject(root)
+//					window.show()
 				}
 			}
 

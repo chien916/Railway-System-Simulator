@@ -1,14 +1,43 @@
 import QtQuick 2.12
 
 Item {
-	implicitWidth: 1100
-	implicitHeight: 500
+	id:root
+	implicitWidth: 1150
+	implicitHeight: 350
+	//value views
 	property real kp_r:0.0
-	property real ki_r:0.6
-	property real kd_r:0.7
+	property real ki_r:0.5
+	property real kd_r:0.6
+
+	property real r_r:1.0
+	property real y_r:1.0
+	property real e_r:1.0
+	property real p_r:1.0
+	property real i_r:1.0
+	property real d_r:1.0
+	property real u_r:1.0
+
+	property string direction_s:"n"
+	property string power_s:"fwd"
+
+	signal onControlButtonClicked(string metaData)
+	signal onNavigationButtonClicked(string naviButtonName)
+
 	Rectangle{
 		anchors.fill: parent
 		color: T3Styling.cBgSub_c
+		radius: T3Styling.margin_r
+		T3Text{
+			anchors.bottom: parent.bottom
+			anchors.right: parent.right
+			anchors.rightMargin: T3Styling.spacing_r
+			textPixelSize_r: T3Styling.fontSubSub_r
+			height: T3Styling.margin_r
+			width: parent.width
+			textContent_s: "T3 Train Controller | Aidan"
+			textAlign_s: "middle"
+			textBold_b: true
+		}
 	}
 	Item{
 		id:item_canvas
@@ -28,6 +57,7 @@ Item {
 			height: T3Styling.margin_r*2+colu_pidLabel00.height
 					+pid_pid.height+text_pidLabel1.height+T3Styling.spacing_r*4
 					+rect_seperatorBelowPid.height+text_menu.height
+//			+T3Styling.spacing_r*4
 			width:item_canvas.width*0.5
 			radius: T3Styling.spacing_r
 			color: T3Styling.cBgMain_c
@@ -123,6 +153,13 @@ Item {
 						left: parent.left
 						right:parent.right
 					}
+					r_r:root.r_r
+					 y_r:root.y_r
+					 e_r:root.e_r
+					 p_r:root.p_r
+					 i_r:root.i_r
+					 d_r:root.d_r
+					 u_r:root.u_r
 				}
 				T3Text{
 					id:text_pidLabel1
@@ -150,6 +187,8 @@ Item {
 
 				T3Text{
 					id:text_menu
+					height: 0
+					visible: false
 					anchors{
 						top:rect_seperatorBelowPid.bottom
 						topMargin: T3Styling.spacing_r
@@ -223,6 +262,10 @@ Item {
 			}
 			height: (parent.height-T3Styling.spacing_r)/2
 			width: height
+			ticks_nA: [0.64,0.82,1]
+			onCurrValue_nChanged: {
+				root.direction_s = ["fwd","neu","rev"][ticks_nA.indexOf(currValue_n)];
+			}
 		}
 
 		T3Text{
@@ -248,6 +291,9 @@ Item {
 			ticks_nA: [0.64,0.73,0.82,0.911,1]
 			height: dial_direction.height
 			width: height
+			onCurrValue_nChanged: {
+				root.power_s = ["p2","p1","n","b1","b2"][ticks_nA.indexOf(currValue_n)];
+			}
 		}
 
 		T3Text{
@@ -374,7 +420,7 @@ Item {
 		}
 
 
-		property int totalRow_n:7
+		property int totalRow_n:8
 		Grid{
 			id:grid_buttons
 			anchors{
@@ -391,11 +437,11 @@ Item {
 			readonly property real unitHeight_r: (parent.height-spacing*(parent.totalRow_n-1))/parent.totalRow_n
 			height: unitHeight_r*rows+spacing*(rows-1)
 			Repeater{
-				model:["Turn On\nHeaters","Turn Off\nHeaters"
-					,"Open\nL Doors","Close\nL Doors"
-					,"Open\nR Doors","Close\nR Doors"
-					,"Turn On\nExterior Light","Turn Off\nExterior Light"
-					,"Turn On\nInterior Light","Turn Off\nInterior Light"
+				model:["Turn On\nspace Heaters","Turn Off\nspace Heaters"
+					,"Open\nLeft Doors","Close\nLeft Doors"
+					,"Open\nRight Doors","Close\nRright Doors"
+					,"Turn On\nExterior Lights","Turn Off\nExterior Lights"
+					,"Turn On\nInterior Lights","Turn Off\nInterior Lights"
 				]
 				delegate:			T3Button{
 					width: parent.unitWidth_r
@@ -410,6 +456,18 @@ Item {
 					buttonTextColor_c: index%2==0
 									   ?T3Styling.cBgMain_c
 									   :T3Styling.cFgMain_c
+					onButtonClicked: {
+						if(index===0) onControlButtonClicked("spaceHeater_on");
+						else if(index===1) onControlButtonClicked("spaceHeater_off");
+						else if(index===2) onControlButtonClicked("leftDoors_on");
+						else if(index===3) onControlButtonClicked("leftDoors_off");
+						else if(index===4) onControlButtonClicked("rightDoors_on");
+						else if(index===5) onControlButtonClicked("rightDoors_off");
+						else if(index===6) onControlButtonClicked("exteriorLights_on");
+						else if(index===7) onControlButtonClicked("exteriorLights_off");
+						else if(index===8) onControlButtonClicked("interiorLights_on");
+						else if(index===9) onControlButtonClicked("interiorLights_off");
+					}
 				}
 			}
 		}
@@ -433,6 +491,7 @@ Item {
 			Repeater{
 				model:[
 					"TURN OFF / ON\nAIDED TRAIN CONTROL"
+					,"ACTIVATE / DEACTIVATE\nSERVICE BRAKE"
 					,"ACTIVATE / DEACTIVATE\nEMERGENCY BRAKE"
 				]
 				delegate:			T3Button{
@@ -445,6 +504,12 @@ Item {
 					releasedColor_c: buttonLabel_s.indexOf("EMERGENCY")!==-1
 									 ?(T3Styling.cRed_c):T3Styling.cFgSubSub_c
 					buttonTextColor_c:T3Styling.cFgMain_c
+					onButtonClicked:
+					{
+						if(index===0) onControlButtonClicked("atc_toggle");
+						else if(index===1) onControlButtonClicked("serviceBrake_toggle");
+						else if(index===2) onControlButtonClicked("emergencyBrake_toggle");
+					}
 				}
 			}
 

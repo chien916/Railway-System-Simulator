@@ -53,6 +53,7 @@ Item {
 				T3ParamUnit{
 					paramConfig_A: modelData
 					width: parent.width
+					readOnly_b: false
 				}
 			}
 		}

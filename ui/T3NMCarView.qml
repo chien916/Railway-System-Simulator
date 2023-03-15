@@ -12,35 +12,35 @@ Item {
 		}
 //		radius: T3Styling.margin_r
 		color:T3Styling.cBgMain_c
-		Text{
-			anchors{
-				top:rect_top.bottom
-				bottom: rect_bottom.top
-				left:parent.left
-				right:parent.right
-			}
-//			width: parent.width
-//			height: parent.height*0.2
-//			x:parent.x
-//			y:parent.y+parent.height*0.5-height/2
-			text:"Door Status :<font color=\"#ffff00\">Open</font> /
-<font color=\"#00ff00\">Closed</font>
-<br/>Brake Status :
-<font color=\"#ffff00\">Applied</font> /
-<font color=\"#00ff00\">Released</font> /
-<font color=\"#ff0000\">Emergency</font>"
-			font.family: "Inter"
-			font.pixelSize: T3Styling.fontSub_r
-			fontSizeMode: Text.Fit
-//			font.letterSpacing: T3Styling.lineWidth_r
-			lineHeight: T3Styling.lineWidth_r*0.5
-			horizontalAlignment: Text.AlignHCenter
-			verticalAlignment: Text.AlignVCenter
-			color: T3Styling.cFgSub_c
-		}
+//		Text{
+//			anchors{
+//				top:rect_top.bottom
+//				bottom: rect_bottom.top
+//				left:parent.left
+//				right:parent.right
+//			}
+////			width: parent.width
+////			height: parent.height*0.2
+////			x:parent.x
+////			y:parent.y+parent.height*0.5-height/2
+//			text:"Door Status :<font color=\"#ffff00\">Open</font> /
+//<font color=\"#00ff00\">Closed</font>
+//<br/>Brake Status :
+//<font color=\"#ffff00\">Applied</font> /
+//<font color=\"#00ff00\">Released</font> /
+//<font color=\"#ff0000\">Emergency</font>"
+//			font.family: "Inter"
+//			font.pixelSize: T3Styling.fontSubSub_r
+//			fontSizeMode: Text.Fit
+////			font.letterSpacing: T3Styling.lineWidth_r
+//			lineHeight: T3Styling.lineWidth_r*0.5
+//			horizontalAlignment: Text.AlignHCenter
+//			verticalAlignment: Text.AlignVCenter
+//			color: T3Styling.cFgSub_c
+//		}
 		Rectangle{
 			id:rect_top
-			height: root.height*0.3
+			height: (root.height-T3Styling.spacing_r)/2
 			width: root.width
 			color: "transparent"
 			Repeater{
@@ -89,7 +89,7 @@ Item {
 			anchors.bottom: parent.bottom
 			anchors.left: parent.left
 			anchors.right: parent.right
-			height: root.height*0.3
+			height: (root.height-T3Styling.spacing_r)/2
 			color: "transparent"
 			Repeater{
 				//number of brake sides in this car
@@ -143,8 +143,4 @@ Item {
 	}
 	implicitHeight: 400
 	implicitWidth: 700
-	MouseArea{
-		anchors.fill: parent
-		onClicked: leftDoorClosed_b =!leftDoorClosed_b
-	}
 }

@@ -4,18 +4,13 @@ Item {
 	id:root
 	implicitHeight: item_canvas.unitHeight_r*3+T3Styling.spacing_r*4
 	implicitWidth: 500
-	property variant data_O:{
-		"r_r":1
-		, "e_r":2
-		,"p_r":3
-		,"i_r":4
-		,"d_r":5.46
-		,"u_r":6
-		,"y_r":7
-		,"kp_r":0
-		,"ki_r":0
-		,"kd_r":0
-	}
+	property real r_r:1.0
+	property real y_r:1.0
+	property real e_r:1.0
+	property real p_r:1.0
+	property real i_r:1.0
+	property real d_r:1.0
+	property real u_r:1.0
 //	onData_OChanged: {
 //		if(load_rInPid.status !==Loader.Ready
 //				||load_eInPid.status !==Loader.Ready
@@ -473,13 +468,13 @@ Item {
 		repeat: true
 		onTriggered: {
 //			console.log(load_rInPid.item.value_s)
-			load_rInPid.item.value_s = data_O["r_r"];
-			load_eInPid.item.value_s = data_O["e_r"];
-			load_pInPid.item.value_s = data_O["p_r"];
-			load_iInPid.item.value_s = data_O["i_r"];
-			load_dInPid.item.value_s = data_O["d_r"];
-			load_uInPid.item.value_s = data_O["u_r"];
-			load_yInPid.item.value_s = data_O["y_r"];
+			load_rInPid.item.value_s = r_r;
+			load_eInPid.item.value_s = e_r;
+			load_pInPid.item.value_s = p_r;
+			load_iInPid.item.value_s = i_r;
+			load_dInPid.item.value_s = d_r;
+			load_uInPid.item.value_s = u_r;
+			load_yInPid.item.value_s = y_r;
 		}
 	}
 }

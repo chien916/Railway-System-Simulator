@@ -5,9 +5,11 @@ Item {
 	id:root
 	implicitHeight: 500
 	implicitWidth: 500
-	property real powerRatio_r:slider_1.value
-	property real velocityRatio_r:slider_2.value
-	property bool onSwitch_b: switch1.position>0.5
+	property real velocityRatio_r:0
+	property real brakeRatio_r:0
+	property bool onSwitch_b: false
+	property bool horn_b:false
+
 	//do not modify
 	property bool stopped_b: true
 	property bool lastStateIsLow_b :false
@@ -47,8 +49,6 @@ Item {
 			console.log("3")
 		}
 	}
-	property real brakeRatio_r:slider_3.value
-
 
 
 	MediaPlayer{
@@ -148,7 +148,7 @@ Item {
 		id: sEff_horn
 		loops: SoundEffect.Infinite
 		source:"qrc:/T3EngineSounds/Horn.wav"
-		volume: switch2.position>0.5?1:0
+		volume: horn_b?1:0
 		Behavior on volume {PropertyAnimation{}}
 	}
 
@@ -228,40 +228,6 @@ Item {
 		Behavior on volume {PropertyAnimation{}}
 	}
 
-	Column{
-		Slider{
-			width: root.width
-			id:slider_1
-		}
-		Slider{width: root.width
-			id:slider_2
-		}
-		Slider{width: root.width
-			id:slider_3
-		}
-		Slider{width: root.width
-			id:slider_4
-		}
-		Switch{width: root.width
-			id:switch1
-
-		}
-		Switch{width: root.width
-			id:switch2
-		}
-		Switch{width: root.width
-			id:switch3
-		}
-		Button{width: root.width
-			onClicked: {
-				annoStation_f("green","OVERBROOK_L","PENN STATION_LR")
-			}
-			onPressAndHold: {
-				pLis_annQueue.addItem("qrc:/T3AnnSounds/Ann_Alert.mp3");
-				audi_announcement.play()
-			}
-		}
-	}
 	Component.onCompleted: {
 		sEff_engine1.play()
 		sEff_engine2.play()
@@ -272,8 +238,7 @@ Item {
 		sEff_flange.play()
 		sEff_rail.play()
 		sEff_horn.play()
-
-		annoStation_f("red","SOUTH HILLS JUNCTION_L","POPLAR_L")
+		//annoStation_f("red","SOUTH HILLS JUNCTION_L","POPLAR_L")
 	}
 
 	function annoStation_f(lineColor_s

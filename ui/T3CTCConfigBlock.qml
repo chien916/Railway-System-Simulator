@@ -94,7 +94,7 @@ Item {
 
 	function db2view(){
 		if(!t3databaseQml.trackVariablesObjects_QML||dbIndex_n===-1) return;
-		console.log(t3databaseQml.getTrackProperty(blockId_s,0))
+		//console.log(t3databaseQml.getTrackProperty(blockId_s,0))
 		reap_repeater.itemAt(0).valueratio_r = t3databaseQml.getTrackProperty(blockId_s,10)?1.0:0.0
 		reap_repeater.itemAt(1).valueratio_r = t3databaseQml.getTrackProperty(blockId_s,1)?1.0:0.0
 		reap_repeater.itemAt(2).valueratio_r

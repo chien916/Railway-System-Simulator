@@ -30,7 +30,7 @@ Item {
 		.replace(/ /g,'!')
 		.substring(0,root.segCharCount_i)
 		font.family: "DSEG14 Classic"
-		font.pixelSize: T3Styling.fontSub_r
+		font.pixelSize: T3Styling.fontSubSub_r*1.4
 		color: T3Styling.cFgMain_c
 		anchors.fill: parent
 		horizontalAlignment: Text.AlignHCenter
@@ -39,7 +39,7 @@ Item {
 	Text{
 		text:"".padStart(root.segCharCount_i,"~")
 		font.family: "DSEG14 Classic"
-		font.pixelSize: T3Styling.fontSub_r
+		font.pixelSize: T3Styling.fontSubSub_r*1.4
 		color: T3Styling.cFgMain_c
 		anchors.fill: parent
 		horizontalAlignment: Text.AlignHCenter

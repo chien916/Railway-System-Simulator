@@ -1,12 +1,14 @@
 import QtQuick 2.12
 import QtQuick.Controls 2.15
 Item {
+	id:root
 	implicitHeight: T3Styling.fontSubSub_r+T3Styling.spacing_r*2
 	implicitWidth: 200
 	property string buttonLabel_s :"buttonText"
 	property color pressedColor_c:T3Styling.cBgMain_c
 	property color releasedColor_c:T3Styling.cFgSubSub_c
 	property color buttonTextColor_c:T3Styling.cFgMain_c
+	property real buttonTextPixelSize_r:T3Styling.fontSubSub_r
 	property bool delayButton_b:false
 	signal buttonClicked()
 	Rectangle{
@@ -40,19 +42,19 @@ Item {
 		}
 		T3Text{
 			textContent_s: buttonLabel_s
-			textPixelSize_r: T3Styling.fontSubSub_r
-			textColor_c: buttonTextColor_c
+			textPixelSize_r: root.buttonTextPixelSize_r
+			textColor_c: root.buttonTextColor_c
 			anchors{
 				margins: T3Styling.spacing_r
 				fill:parent
 			}
 		}
 	}
-	Timer{
-		id:time_timer
-		interval: 300
-		onTriggered: dBut_delayButton.progress = 0;
-	}
+//	Timer{
+//		id:time_timer
+//		interval: 300
+//		onTriggered: dBut_delayButton.progress = 0;
+//	}
 
 	DelayButton{
 		id:dBut_delayButton
@@ -65,8 +67,6 @@ Item {
 		onActivated: {
 			if(!delayButton_b) return;
 			buttonClicked();
-			time_timer.running = true;
-
 		}
 		onClicked: {
 			if(delayButton_b) return;

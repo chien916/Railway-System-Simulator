@@ -1,4 +1,4 @@
-QT += quick gui charts
+QT += quick gui charts multimedia
 
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
@@ -21,6 +21,9 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 HEADERS += \
+	t3ctcoffice.hpp \
 	t3database.hpp \
-	t3trackhandler.hpp \
-	t3trainhandler.hpp
+	t3trackcontroller.hpp \
+	t3trackmodel.hpp \
+	t3traincontroller.hpp \
+	t3trainmodel.hpp

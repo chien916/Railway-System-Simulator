@@ -1,14 +1,44 @@
 import QtQuick 2.12
-
+import QtQuick.Dialogs 1.0
 Item {
-
+	id:root
 	property real plcInputs_r:0xfff3ffff
 	property real plcOutputs_r:13
-	implicitHeight: 500
+	property string plcFilePath_s:"N/A"
+	property string plcStatus_s:"Not Loaded"
+	implicitHeight: 380
 	implicitWidth: 500
 	Rectangle{
 		anchors.fill: parent
+		radius: T3Styling.margin_r
 		color: T3Styling.cBgSub_c
+		T3Text{
+			anchors.bottom: parent.bottom
+			anchors.right: parent.right
+			anchors.rightMargin: T3Styling.margin_r
+			textPixelSize_r: T3Styling.fontSubSub_r
+			height: T3Styling.margin_r
+			width: parent.width
+			textContent_s: "T3 Track Controller | Avi Dave"
+			textAlign_s: "right"
+			textBold_b: true
+		}
+	}
+	FileDialog {
+		id: fDia_fileDialog
+		title: "Please choose a PLC file"
+		folder: shortcuts.home
+		onAccepted: {
+			plcFilePath_s = fDia_fileDialog.fileUrls.toString()
+			plcStatus_s = "Loaded"
+			//Qt.quit()
+		}
+		onRejected: {
+			plcFilePath_s = "N/A"
+			plcStatus_s = "Not Loaded"
+			//Qt.quit()
+		}
+		//Component.onCompleted: visible = true
 	}
 	Item{
 		id:item_canvas
@@ -44,26 +74,26 @@ Item {
 					}
 					height: T3Styling.fontSub_r*rows+T3Styling.spacing_r*(rows-1)
 					Repeater{
-						model:["PLC File Path","PLC Status"]
+						model:[["PLC File Path",root.plcFilePath_s],
+						["PLC Program Status",root.plcStatus_s]]
 						delegate:Item{
 							width: grid_label.width
 							height: T3Styling.fontSub_r
 							T3Text{
 								anchors.fill: parent
-								textContent_s: modelData
+								textContent_s: modelData[0]
 								textAlign_s: "left"
 								textColor_c: T3Styling.cFgSub_c
 							}
 							T3Text{
 								anchors.fill: parent
-								textContent_s: modelData
+								textContent_s: modelData[1]
 								textAlign_s: "right"
 								textColor_c: T3Styling.cFgMain_c
 							}
 						}
 					}
 				}
-
 				Rectangle{
 					id:rect_seperatorInputLabel
 					anchors{
@@ -208,14 +238,23 @@ Item {
 			}
 			spacing: T3Styling.spacing_r
 			rows:1
-			columns:3
+			columns:2
 			Repeater{
-				model:["◄","●","■"]
+				model:["Load Local PLC File","Toggle Manual / Automatic Mode"]
 				delegate:T3Button{
 					buttonLabel_s: modelData
 					width: (grid_menuButtons.width-(grid_menuButtons.spacing*grid_menuButtons.columns-1))
 						   /grid_menuButtons.columns
 					height: grid_menuButtons.height
+					pressedColor_c: index===1?T3Styling.cRed_c:T3Styling.cBgMain_c
+					releasedColor_c:index===1?Qt.darker(T3Styling.cRed_c):T3Styling.cFgSubSub_c
+					delayButton_b: index===1
+					onButtonClicked: {
+						if(index===0)
+							fDia_fileDialog.open()
+
+
+					}
 				}
 			}
 		}

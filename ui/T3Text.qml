@@ -11,6 +11,7 @@ Item {
 	property color bgColor_c: "transparent"
 	property string textAlign_s:""
 	property bool textBold_b: false
+	property bool textItalic_b:false
 	Rectangle{
 		anchors.fill: root
 		radius: T3Styling.spacing_r
@@ -26,6 +27,7 @@ Item {
 		color: root.textColor_c
 		font.letterSpacing: root.textLetterSpacing_r
 		font.family: "Inter"
+		font.italic: root.textItalic_b
 		font.bold: root.textBold_b
 		fontSizeMode: Text.Fit
 		horizontalAlignment: {

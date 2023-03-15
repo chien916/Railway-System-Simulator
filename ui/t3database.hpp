@@ -3,8 +3,9 @@
 
 #include <QtCore>
 #include <QtQml>
-#include "t3trainhandler.hpp"
-#include "t3trackhandler.hpp"
+#include "t3trainmodel.hpp"
+#include "t3trackmodel.hpp"
+#include "t3ctcoffice.hpp"
 //#include "t3trackmodel.hpp"
 
 /**
@@ -48,10 +49,15 @@ class T3Database: public QObject {
 	QJsonArray trackVariablesObjects;//do not modify directly after initialization. use the setTrackProperty() slot instead!
 	Q_PROPERTY(QJsonArray trainObjects_QML MEMBER trainObjects NOTIFY onTrainObjectsChanged)
 	QJsonArray trainObjects;//do not modify directly after initialization. use the setTrainProperty() slot instead!
+	Q_PROPERTY(QString currentTime_QML READ getCurrentTime NOTIFY onCurrentTimeChanged)
+	QJsonArray dispatchQueue;
+	Q_PROPERTY(QJsonArray dispatchQueue_QML MEMBER dispatchQueue NOTIFY onDispatchQueueChanged)
   Q_SIGNALS:
 	void onTrackConstantsObjectsChanged();
 	void onTrackVariablesObjectsChanged();
 	void onTrainObjectsChanged();
+	void onCurrentTimeChanged();
+	void onDispatchQueueChanged();
   public:
 	T3Database(QObject *parent = nullptr);
 	//Track properties definiations
@@ -150,20 +156,25 @@ class T3Database: public QObject {
 	Q_INVOKABLE void pushToFirebase();
 	Q_INVOKABLE void pullFromFirebase();
 
+	//CTC-Office related operations
+
+	//Q_INVOKABLE QVariant ctc_
+	Q_INVOKABLE QJsonArray ctc_getPossiblePaths(QJsonArray dispatchMetaInfo);
+
+	Q_INVOKABLE QString getCurrentTime();
+	Q_INVOKABLE void setTimerRate(int rate);
+
 	Q_INVOKABLE void setTrackProperty(QString blockId, T3Database::TrackProperty trackProperty, QVariant value);
 	Q_INVOKABLE QVariant getTrackProperty(QString blockId, T3Database::TrackProperty trackProperty);
 	Q_INVOKABLE void addTrackFromCsv(const QString filePath);
 	Q_INVOKABLE void setTrainProperty(QString trainId, T3Database::TrainProperty trainProperty, QVariant value);
 	Q_INVOKABLE QVariant getTrainProperty(QString trainId, T3Database::TrainProperty trainProperty);
-	Q_INVOKABLE void addTrainFromCtc(const QString trainId, const QString trackId, bool moveDirection);
+	Q_INVOKABLE void addTrainFromCtc(const QString trainId, const QString originBlockId, const QString destiBlockId/*, bool moveDirection*/);
 	Q_INVOKABLE void removeTrainFromCtc(const QString trainId);
-
-
 
 	float pid_plant(float);
 	void trackIterate();
 	void trainIterate();
-
 	QString getPrevOrNextBlock(QString currBlockId, const QJsonObject * currTrackCon, QJsonObject * currTrackVar
 							   , bool reversedLook, bool * viewReversed);
 
@@ -171,8 +182,14 @@ class T3Database: public QObject {
 	//FIREBASE RELATED
 	QString firebaseRootUrlString = "https://sprn2023-ece1140-default-rtdb.firebaseio.com/";
 	QNetworkAccessManager networkAccessManager;
+	QTime currentTime;
+	uint8_t timerRate = 1;
 
 
+
+	// QObject interface
+  protected:
+	void timerEvent(QTimerEvent *event) Q_DECL_OVERRIDE;
 };
 
 /**
@@ -402,9 +419,10 @@ inline QVariant T3Database::getTrainProperty(QString trainId, TrainProperty trai
 		}
 	}
 	qFatal("T3Database::setTrainProperty() -> cannot find train with ID provided");
+	return QVariant();
 }
 
-inline void T3Database::addTrainFromCtc(const QString trainId, const QString blockId, bool moveDirection) {
+inline void T3Database::addTrainFromCtc(const QString trainId, const QString originBlockId, const QString destiBlockId/*, bool moveDirection*/) {
 	QJsonObject trainObject;
 	trainObject.insert(QString("id"), trainId);
 	trainObject.insert(QString("length"), 32.2);
@@ -430,13 +448,13 @@ inline void T3Database::addTrainFromCtc(const QString trainId, const QString blo
 	trainObject.insert(QString("pid_ki"), 0.1);
 	trainObject.insert(QString("pid_kp"), 0.1);
 	trainObject.insert(QString("pid_kd"), 0.1);
-	setTrackProperty(blockId, TrackProperty::TrainOnBlock, trainId);
+	setTrackProperty(originBlockId, TrackProperty::TrainOnBlock, trainId);
 	trainObjects.push_front(trainObject);
 
-	QStringList trainOnBlock = {QString(trainId), QString(moveDirection ? "F" : "B"), QString::number(0.0)};
+	//HERE NEEDS CHANGE!
+	QStringList trainOnBlock = {QString(trainId), QString("F") /*QString(moveDirection ? "F" : "B")*/, QString::number(0.0)};
 
-	setTrackProperty(blockId, TrackProperty::TrainOnBlock, trainOnBlock.join("_"));
-
+	setTrackProperty(originBlockId, TrackProperty::TrainOnBlock, trainOnBlock.join("_"));
 	Q_EMIT onTrainObjectsChanged();
 	Q_EMIT onTrackVariablesObjectsChanged();
 }
@@ -455,12 +473,16 @@ inline void T3Database::removeTrainFromCtc(const QString trainId) {
 
 inline T3Database::T3Database(QObject * parent) : QObject(parent) {
 	//	//TESTING FOR RAIL LOADING
+	this->currentTime = QTime::currentTime();
 	addTrackFromCsv("C:/Users/YIQ25/Documents/Academics/ECE1140/Resources/T3RedLine.csv");
 	//	setTrackProperty("R_A_1", TrackProperty::TrainOnBlock, "1234");
 	//	setTrackProperty("R_A_1", TrackProperty::PeopleOnStation, "1234");
 	addTrackFromCsv("C:/Users/YIQ25/Documents/Academics/ECE1140/Resources/T3GreenLine.csv");
 	addTrackFromCsv("C:/Users/YIQ25/Documents/Academics/ECE1140/Resources/T3BlueLine.csv");
+	addTrainFromCtc("1234", "R_A_1", "FWD");
 	pushToFirebase();
+	//ctc_getPossiblePaths(QJsonArray{QString("1234"), QString("R_C_8"), QString("R_B_6"), QString("12:34")});
+
 }
 
 inline float T3Database::pid_plant(float inp) {
@@ -503,6 +525,13 @@ inline QString T3Database::getPrevOrNextBlock(QString currBlockId
 	return prevNextBlockId;
 }
 
+inline void T3Database::timerEvent(QTimerEvent *event) {
+	//update time
+	this->currentTime = this->currentTime.addMSecs(100 * static_cast<int>(timerRate));
+	Q_EMIT onCurrentTimeChanged();
+
+}
+
 inline void T3Database::pushToFirebase() {
 	const QList<QPair<QString, QJsonArray*>> args{
 		{"trackConstantsObjects", &trackConstantsObjects}
@@ -537,6 +566,52 @@ inline void T3Database::pullFromFirebase() {
 			Q_EMIT onTrackVariablesObjectsChanged();
 		});
 	}
+}
+
+inline QJsonArray T3Database::ctc_getPossiblePaths(QJsonArray dispatchMetaInfo) {
+	//first, locate the correct trackConstantObject from trackConstantObjects
+	QJsonObject targetedBlockMap;
+	QString startingBlock1, startingBlock2, endingBlock1, endingBlock2;
+	for(qsizetype i = 0; i < trackConstantsObjects.size(); ++i) {
+		//assume trackConstantObjects is in right format
+		QJsonObject currBlocksMap = trackConstantsObjects.at(i).toObject().value("blocksMap").toObject();
+		if(currBlocksMap.contains(dispatchMetaInfo.at(1).toString())
+				&& currBlocksMap.contains(dispatchMetaInfo.at(2).toString())) {
+			targetedBlockMap = currBlocksMap;
+			startingBlock1 = trackConstantsObjects.at(i).toObject().value("startingBlock1").toString();
+			startingBlock2 = trackConstantsObjects.at(i).toObject().value("startingBlock2").toString();
+			endingBlock1 = trackConstantsObjects.at(i).toObject().value("endingBlock1").toString();
+			endingBlock2 = trackConstantsObjects.at(i).toObject().value("endingBlock2").toString();
+			break;
+		}
+	}
+	if(targetedBlockMap.isEmpty()
+			|| startingBlock1.isNull() || startingBlock2.isNull()
+			|| endingBlock1.isNull() || endingBlock2.isNull())
+		qFatal("T3Database::ctc_getPossiblePaths() cannot find the right block map or border block.");
+
+	QList<QList<QString>> retRaw
+					   = T3CTCOffice::searchPaths
+						 (dispatchMetaInfo.at(1).toString()//origin block id
+						  , dispatchMetaInfo.at(2).toString()//destination block id
+						  , QSet<QString>() //empty string set
+						  , startingBlock1, startingBlock2, endingBlock1, endingBlock2
+						  , &targetedBlockMap);
+
+	QJsonArray ret;
+	for(QList<QString>&currretRaw : retRaw) {
+		ret.append(QJsonArray::fromStringList(currretRaw));
+	}
+	return ret;
+
+}
+
+inline QString T3Database::getCurrentTime() {
+	return this->currentTime.toString("HH:mm:ss");
+}
+
+inline void T3Database::setTimerRate(int rate) {
+	this->timerRate = static_cast<uint8_t>(rate);
 }
 
 inline void T3Database::trackIterate() {

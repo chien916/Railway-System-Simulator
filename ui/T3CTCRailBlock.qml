@@ -34,7 +34,9 @@ Item {
 		if(!ready_b) return T3Styling.cRed_c;
 		let failure_b = blockVariablesObject_O["failure"];
 		let authority_b = blockVariablesObject_O["authority"];
-		if(failure_b)
+		if(hovered2_b)
+			return T3Styling.cFgMain_c
+		else if(failure_b)
 			return T3Styling.cRed_c
 		else{
 			if(authority_b)
@@ -84,6 +86,7 @@ Item {
 		return blockVariablesObject_O["maintainanceMode"];
 	}
 	//--MODIFYABLES:
+	property bool hovered2_b:false
 	property bool hovered_b:false
 	property bool pressed_b:false
 	//block identifier
@@ -115,7 +118,7 @@ Item {
 	property color adaptiveFgSubSub_c:{
 		if(pressed_b)
 			return T3Styling.cFgSub_c
-		else if(hovered_b)
+		else if(hovered_b||hovered2_b)
 			return T3Styling.cFgMain_c
 		else
 			return T3Styling.cFgSubSub_c
@@ -135,7 +138,7 @@ Item {
 		color: {
 			if(pressed_b)
 				return T3Styling.cBgMain_c
-			else if(hovered_b)
+			else if(hovered_b||hovered2_b)
 				return T3Styling.cBgSub_c
 			else
 				return "transparent"

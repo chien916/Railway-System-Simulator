@@ -1,13 +1,14 @@
 import QtQuick 2.12
-
+import QtQuick.Dialogs 1.3
 Item {
 	id:root
-	width: 700
+	width: 1000
 	height:T3Styling.margin_r
-	readonly property bool metadataReady:tInp_dispatchAt.customAcceptableInput
+	readonly property bool metadataReady:csvMetadataReady
 										 && tInp_dispatchFrom.customAcceptableInput
 										 && tInp_dispatchTo.acceptableInput
-										 && tInp_dispatchTrain.acceptableInput
+	readonly property bool csvMetadataReady:tInp_dispatchAt.acceptableInput
+											&& tInp_dispatchTrain.acceptableInput
 	readonly property variant trackConstantsObjects_OA: t3databaseQml.trackConstantsObjects_QML
 
 	property bool pathSelectionMode_b: false
@@ -17,7 +18,7 @@ Item {
 	readonly property variant currSelectedPath_A :
 		currSelectedPathInd_n===-1?[]:possiblePaths_A[currSelectedPathInd_n];
 
-	signal dispatchRequested(metaInfo_sA:variant)
+	signal dispatchRequested(metaInfo_sA:variant,path_A:variant)
 	signal dispatchCancelled()
 	Rectangle{
 		anchors.fill: parent
@@ -141,21 +142,55 @@ Item {
 			if(dispatchTime_s===":")
 				dispatchTime_s = t3databaseQml.currentTime_QML.split(":").slice(0,-1).join(":");
 			if(!pathSelectionMode_b){
-				root.possiblePaths_A = t3databaseQml.ctc_getPossiblePaths([dispatchTrainId_s,dispatchFrom_s,disptachTo_s,dispatchTime_s]);
+				root.possiblePaths_A = t3databaseQml.ctc_getPossiblePathsFromMetaInfo([dispatchTrainId_s,dispatchFrom_s,disptachTo_s,dispatchTime_s]);
 				if(root.possiblePaths_A.length>0) root.pathSelectionMode_b = true;
 			}else{
 				if(currSelectedPathInd_n===-1){
 					rect_errMessage.showMessage("Dispatch Fail: Please select a dispatch path.");
 					return;
 				}
-				dispatchRequested([dispatchTrainId_s,dispatchFrom_s,disptachTo_s,dispatchTime_s,root.currSelectedPath_A]);
-				console.log([dispatchTrainId_s,dispatchFrom_s,disptachTo_s,dispatchTime_s,root.currSelectedPath_A])
+				dispatchRequested([dispatchTrainId_s,dispatchFrom_s,disptachTo_s,dispatchTime_s],currSelectedPath_A);
+				//console.log([dispatchTrainId_s,dispatchFrom_s,disptachTo_s,dispatchTime_s,root.currSelectedPath_A])
 				possiblePaths_A = [];
 				currSelectedPathInd_n = -1;
 				pathSelectionMode_b = false;
 			}
 			//dispatchRequested([dispatchTrainId_s,dispatchFrom_s,disptachTo_s,dispatchTime_s]);
 		}
+	}
+
+	Rectangle{
+		id:rect_seperator2
+		anchors{
+			left:cust_okButton.right
+			top:parent.top
+			bottom:parent.bottom
+			topMargin: T3Styling.lineWidth_r
+			bottomMargin: T3Styling.lineWidth_r
+			leftMargin: T3Styling.spacing_r
+		}
+		width: T3Styling.lineWidth_r*0.5
+		radius: width
+		color: T3Styling.cFgSubSub_c
+	}
+
+	T3Button{
+		id:cust_loadFromCsvButton
+		anchors{
+			top:parent.top
+			//left:rect_dispatchAt.right
+			left:rect_seperator2.right
+			leftMargin: T3Styling.spacing_r
+			bottom: parent.bottom
+		}
+		//releasedColor_c: !root.metadataReady?T3Styling.cRed_c:Qt.darker(pressedColor_c)
+		//pressedColor_c: !root.metadataReady?T3Styling.cRed_c:T3Styling.cGreen_c
+		width: T3Styling.fontSubSub_r*10
+		opacity:(root.csvMetadataReady)?1:0.5
+		//releasedColor_c: !(root.csvMetadataReady)?T3Styling.cRed_c:Qt.darker(pressedColor_c)
+		pressedColor_c: !(root.csvMetadataReady)?releasedColor_c:T3Styling.cBgMain_c
+		buttonLabel_s: "Import Schedule"
+		onButtonClicked: if(csvMetadataReady)fDia_selectScheduleDialog.open()
 	}
 
 	Rectangle{
@@ -510,6 +545,22 @@ Item {
 		}
 		//console.log(ids_sA)
 		return ids_sA;
+	}
+
+
+	FileDialog{
+		id:fDia_selectScheduleDialog
+		title: "Please select Schedule CSV file"
+		selectExisting: true
+		selectMultiple: false
+		selectFolder:false
+		nameFilters: ["Line CSV File (*.csv)"]
+		onAccepted: {
+			console.log(fDia_selectScheduleDialog.fileUrl);
+			root.possiblePaths_A = t3databaseQml.ctc_getPossiblePathsFromCsv
+					(fDia_selectScheduleDialog.fileUrl,[tInp_dispatchTrain.text,"NA","NA",tInp_dispatchAt.text]);
+			if(root.possiblePaths_A.length>0) root.pathSelectionMode_b = true;
+		}
 	}
 
 

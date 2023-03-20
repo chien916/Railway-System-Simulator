@@ -15,17 +15,21 @@ class T3CTCOffice {
 	 * 4. Pops the requests from queue when time is ready, adds to trainObjects and trackVariableObjects
 	 *
 	 */
+	static QJsonArray searchPathsFromCsv(const QString filePath, const QJsonObject* stationToBlockIdMap, const QJsonArray dispatchMetaInfo, const QJsonArray* trackConstantsObjects);
+	static void enqueueDispatchRequest(QJsonArray* queue, const QJsonArray dispatchMetaInfo, const QJsonArray path);
+	static QJsonArray popFromDispatchQueueAtTime(QJsonArray* queue, QTime currTime);
+	static QJsonArray searchPathsFromMetaInfo(const QJsonArray dispatchMetaInfo, const QJsonArray* trackConstantsObjects);
+  private:
 	static QList<QList<QString>> searchPaths (const QString originBlockId, const QString destBlockId, QSet<QString> pathSet
 							  , const QString& startingBlock1, const QString& startingBlock2, const QString& endingBlock1, const QString& endingBlock2
-							  , QJsonObject* targetedBlockMap);
-	static void addToDispatchQueueWithPaths(QJsonArray* queue, const QJsonArray dispatchMetaInfo, const QJsonArray path);
-	static QJsonArray popFromDispatchQueueAtTime(QJsonArray* queue, QTime currTime);
-	static QJsonArray calculateViewCooridnates(QJsonObject* rootObj_O);
+							  , QJsonObject* targetedBlockMap,  QString allowedDirection);
+
 };
 
+
 inline QList<QList<QString> > T3CTCOffice::searchPaths(const QString originBlockId, const QString destBlockId, QSet<QString> pathSet
-		, const QString &startingBlock1, const QString &startingBlock2, const QString &endingBlock1, const QString &endingBlock2
-		, QJsonObject* targetedBlockMap) {
+		, const QString & startingBlock1, const QString & startingBlock2, const QString & endingBlock1, const QString & endingBlock2
+		, QJsonObject * targetedBlockMap,  QString allowedDirection) {
 	QList<QString> path;
 	QString currBlockId = originBlockId;
 	path.append(currBlockId);
@@ -43,14 +47,17 @@ inline QList<QList<QString> > T3CTCOffice::searchPaths(const QString originBlock
 			(currBlockObject.value("nextBlock2").toString())
 		};
 		//handles border block
-		if(blockCandidatesAndTraversables.at(0) == "START_T")
+		bool allowedDirectionShouldChange = true;
+		if(allowedDirection == "REVERSED" && blockCandidatesAndTraversables.at(0) == "START_T")
 			blockCandidatesAndTraversables[0] = startingBlock2;
-		else if(blockCandidatesAndTraversables.at(0) ==  "START_B")
+		else if(allowedDirection == "REVERSED" && blockCandidatesAndTraversables.at(0) ==  "START_B")
 			blockCandidatesAndTraversables[0] = startingBlock1;
-		if(blockCandidatesAndTraversables.at(2) ==  "END_T")
+		else if(allowedDirection == "FORWARD" && blockCandidatesAndTraversables.at(2) ==  "END_T")
 			blockCandidatesAndTraversables[2]  = endingBlock2;
-		else if(blockCandidatesAndTraversables.at(2) == "END_B")
+		else if(allowedDirection == "FORWARD" && blockCandidatesAndTraversables.at(2) == "END_B")
 			blockCandidatesAndTraversables[2] = endingBlock1;
+		else allowedDirectionShouldChange = false;
+
 		//determines if block is traversable. If not, remove it from list
 		for(qsizetype i = 3; i >= 0; --i) {
 			QString currBlockCandidatesAndTraversable
@@ -58,10 +65,17 @@ inline QList<QList<QString> > T3CTCOffice::searchPaths(const QString originBlock
 			if(currBlockCandidatesAndTraversable.split("_").size() != 3
 					|| pathSet.contains(currBlockCandidatesAndTraversable)
 					|| (currBlockObject.value("direction").toString() == "FORWARD" && i < 2)
-					|| (currBlockObject.value("direction").toString() == "REVERSED" && i >= 2))
+					|| (currBlockObject.value("direction").toString() == "REVERSED" && i >= 2)
+					|| (allowedDirection == "FORWARD" && i < 2)
+					|| (allowedDirection == "REVERSED" && i >= 2))
 				blockCandidatesAndTraversables.remove(i);
 		}
 		//traverse
+		if(allowedDirectionShouldChange) {
+			if(allowedDirection == "FORWARD") allowedDirection = "REVERSED";
+			else if(allowedDirection == "REVERSED") allowedDirection = "FORWARD";
+		}
+
 		if(blockCandidatesAndTraversables.size() == 0) {
 			//dead path found
 			return QList<QList<QString>>();
@@ -82,7 +96,7 @@ inline QList<QList<QString> > T3CTCOffice::searchPaths(const QString originBlock
 			for(QString& candidate : blockCandidatesAndTraversables) {
 				//pathSet.insert(currBlockId);//backtracking insert
 				QList<QList<QString>> currRet = searchPaths(candidate, destBlockId, pathSet
-												, startingBlock1, startingBlock2, endingBlock1, endingBlock2, targetedBlockMap);
+												, startingBlock1, startingBlock2, endingBlock1, endingBlock2, targetedBlockMap, allowedDirection);
 				if(currRet == QList<QList<QString>>()) continue;
 				for(QList<QString>& currPathFromRet : currRet) {
 					//currPathFromRet.push_front(candidate);
@@ -98,30 +112,167 @@ inline QList<QList<QString> > T3CTCOffice::searchPaths(const QString originBlock
 }
 
 
-inline void T3CTCOffice::addToDispatchQueueWithPaths(QJsonArray *queue, const QJsonArray dispatchMetaInfo, const QJsonArray path) {
+inline QJsonArray T3CTCOffice::searchPathsFromCsv(const QString filePath, const QJsonObject *stationToBlockIdMap, const QJsonArray dispatchMetaInfo, const QJsonArray *trackConstantsObjects) {
+	QList<QList<QString>> stationBlockIds;
+	QTime delayTime(0, 0, 0, 0);
+	QString yardId = "";
+
+	//Read-in CSV
+	{
+		QString newFilePath = QString(filePath).replace("file:///", "");
+		QFile file(newFilePath);
+		if(!newFilePath.contains(".csv")) {
+			qFatal("T3Database::addTrackFromCsv() -> CSV bad format: file received is not csv extensions");
+		}
+		if(!file.open(QIODevice::ReadOnly)) {
+			qFatal(file.errorString().toUtf8());
+		}
+
+		while(!file.atEnd()) { //each iteration is one block (one line in csv)
+			QStringList currLineSplitted = QString::fromUtf8(file.readLine()).trimmed().split(',');
+			//check file format
+			if(yardId == "") {
+				if(currLineSplitted.length() != 3
+						|| !currLineSplitted.at(0).toLower().contains("line")
+						|| !currLineSplitted.at(1).toLower().contains("infrastructure")
+						|| !currLineSplitted.at(2).toLower().contains("time"))
+					qFatal("T3CTCOffice::searchPathFromCsv() -> CSV bad format: This is not a schedule CSV.");
+				yardId = "UNKNOWN";
+				continue;
+			} else if(yardId == "UNKNOWN") {
+				QString lineFull = currLineSplitted.at(0).trimmed().toLower();
+				if(lineFull.contains("green"))
+					yardId = "G_J_62";
+				else if(lineFull.contains("red"))
+					yardId = "R_C_9";
+				else if(lineFull.contains("blue"))
+					yardId = "B_A_1";
+			}
+			if(currLineSplitted.length() != 3) continue;
+			QString stationName = currLineSplitted.at(1).trimmed();
+			bool floatConversionSuccess = false;
+			float minutesToTraverse =  currLineSplitted.at(2).trimmed().toFloat(&floatConversionSuccess);
+			if(!floatConversionSuccess)
+				qFatal(QString("T3CTCOffice::searchPathFromCsv() ->Cannot parse float " + currLineSplitted.at(2)).toLocal8Bit());
+			if(!stationToBlockIdMap->contains(stationName))
+				qFatal(QString("T3CTCOffice::searchPathFromCsv() -> Cannot find db-mapped station name " + stationName).toLocal8Bit());
+			QJsonArray blockIdsCorrespodingToStation = stationToBlockIdMap->value(stationName).toArray();
+			QStringList blockIdsCorrespodingToStationStringList;
+			for(QJsonArray::iterator i = blockIdsCorrespodingToStation.begin(); i < blockIdsCorrespodingToStation.end(); ++i) {
+				blockIdsCorrespodingToStationStringList.push_back(i->toString());
+			}
+			stationBlockIds.push_back(blockIdsCorrespodingToStationStringList);
+			delayTime = delayTime.addSecs(60 * minutesToTraverse);
+		}
+	}
+
+	if(stationBlockIds.length() == 0)
+		qFatal("T3CTCOffice::searchPathFromCsv() -> Entry count is 0");
+	//QList<QList<QString>> retFwd = searchPaths(yardId, stationBlockIds.last(),QSet<QString>(),)
+	QTime arrivalTime = QTime::fromString(dispatchMetaInfo.at(3).toString("HH:mm"));
+	QTime dispatchTime = arrivalTime.addSecs(-60 * delayTime.minute()).addSecs(delayTime.second());
+	//QJsonArray newDispatchMetaInfo = {dispatchMetaInfo.at(0).toString(), yardId, stationBlockIds.last(), dispatchTime.toString("HH:mm")};
+	QJsonArray finalPath;
+	QList<QList<QString>> finalPaths;
+
+	//count the number of stations has two block IDs match
+	QHash<qsizetype, qsizetype> stationToBinamacIndMap;
+	{
+		for(qsizetype i = 0; i < stationBlockIds.length(); ++i) {
+			if(stationBlockIds.at(i).length() == 2)
+				stationToBinamacIndMap.insert(i, stationToBinamacIndMap.size());
+		}
+	}
+
+	//get a aggregation of paths, each one maps to an distinct combination of station blocks
+	QJsonArray possibleCombPaths;
+	{
+		for(quint64 comb = 0; comb < (1 << stationToBinamacIndMap.size()); ++comb) {
+
+			//get the current station block ids for this combination
+			QList<QString> currStationBlockIds;
+			{
+				for(qsizetype i = 0; i < stationBlockIds.length(); ++i) {
+					if(stationToBinamacIndMap.contains(i) && ((comb & (1 << stationToBinamacIndMap.value(i))) != 0))
+						currStationBlockIds.push_back(stationBlockIds.at(i).at(1));
+					else
+						currStationBlockIds.push_back(stationBlockIds.at(i).at(0));
+				}
+			}
+
+			//get an optimal path connecting all stations of current combinations -> only one path will be known, the optimal one
+			QJsonArray possiblePathForThisComb;
+			{
+				for(qsizetype i = 0; i < currStationBlockIds.length() - 1; ++i) 	{ //for each possible block id of path-finding destination station
+					//between each 2 stations, find all possible paths connecting 2 stations
+					QJsonArray currDispatchMetaInfo = {"____", i == -1 ? yardId : currStationBlockIds.at(i), currStationBlockIds.at(i + 1), "__:__"};
+					QJsonArray currPossiblePaths = searchPathsFromMetaInfo(currDispatchMetaInfo, trackConstantsObjects);
+
+					//find the smallest path connecting the current 2 stations
+					QPair<qsizetype, qsizetype> smallest = qMakePair(-1, 0);
+					{
+						for(qsizetype j = 0; j < currPossiblePaths.size(); ++j) { //for each possible path of current path-finding origin and destination block
+							QJsonArray currPossiblePath = currPossiblePaths.at(j).toArray();
+							if(smallest.first == -1 || currPossiblePath.size() < smallest.second) {
+								smallest.first = j;
+								smallest.second = currPossiblePath.size();
+							}
+						}
+					}
+
+					//append this path connecting 2 stations to possiblePathForThisComb only if the path connecting 2 stations can be found
+					if(smallest.first != -1) {
+						QJsonArray bestPossiblePath = currPossiblePaths.at(smallest.first).toArray();
+						for(qsizetype j = 0; j < bestPossiblePath.size(); ++j) {
+							possiblePathForThisComb.push_back(bestPossiblePath.at(j).toString());
+						}
+					} else {
+						possiblePathForThisComb = QJsonArray();//clear the possible path for this combination of stations
+						Q_ASSERT(possiblePathForThisComb.isEmpty());//well, just to make sure I cleared the jsonarray :*)
+						break;//stop searching path for the next 2 stations -> this combination doesn't work!
+					}
+
+				}
+			}
+
+			//if an optimal path connecting all stations can be found, append this path to possibleCombPaths
+			if(possiblePathForThisComb.size() > 0) {
+				possibleCombPaths.push_back(possiblePathForThisComb);
+			}
+		}
+	}
+	return possibleCombPaths;
+
+}
+inline void T3CTCOffice::enqueueDispatchRequest(QJsonArray * queue, const QJsonArray dispatchMetaInfo, const QJsonArray path) {
 	QJsonObject dispatchObject;
 	if(dispatchMetaInfo.size() != 4)
 		qFatal("T3CTCOffice::addToDispatchQueueWithPaths() meta information is not four");
 	QTime dispatchTime = QTime::fromString(dispatchMetaInfo.at(3).toString(), "HH:mm");
 	if(!dispatchTime.isValid())
 		qFatal("T3CTCOffice::addToDispatchQueueWithPaths() time from meta info is not valid");
+	dispatchObject.insert(QString("trainId"), dispatchMetaInfo.at(0).toString());
+	dispatchObject.insert(QString("origin"), dispatchMetaInfo.at(1).toString());
+	dispatchObject.insert(QString("destination"), dispatchMetaInfo.at(2).toString());
+	dispatchObject.insert(QString("time"), dispatchTime.toString("HH:mm"));
+	dispatchObject.insert(QString("path"), path);
 	for(qsizetype i = 0; i < queue->size(); ++i) {
-		QTime currDispatchTime = QTime::fromString(queue->at(i).toObject().value("dispatchTime").toString(), "HH:mm");
+		QTime currDispatchTime = QTime::fromString(queue->at(i).toObject().value("time").toString(), "HH:mm");
 		if(!currDispatchTime.isValid())
 			qFatal("T3CTCOffice::addToDispatchQueueWithPaths() time from queue is not valid");
 		if(currDispatchTime > dispatchTime) {
-			queue->insert(i, dispatchMetaInfo);
+			queue->insert(i, dispatchObject);
 			return;
 		}
 	}
-	queue->append(dispatchMetaInfo);//if empty or later than all
+	queue->append(dispatchObject);//if empty or later than all
 }
 
-inline QJsonArray T3CTCOffice::popFromDispatchQueueAtTime(QJsonArray *queue, QTime currTime) {
+inline QJsonArray T3CTCOffice::popFromDispatchQueueAtTime(QJsonArray * queue, QTime currTime) {
 	QJsonArray ret;
 	do {
 		if(queue->empty()) break;
-		QTime currDispatchTime = QTime::fromString(queue->first().toObject().value("dispatchTime").toString(), "HH:mm");
+		QTime currDispatchTime = QTime::fromString(queue->first().toObject().value("time").toString(), "HH:mm");
 		if(!currDispatchTime.isValid())
 			qFatal("T3CTCOffice::popFromDispatchQueueAtTime() time from queue is not valid");
 		if(currDispatchTime > currTime) break;
@@ -130,118 +281,57 @@ inline QJsonArray T3CTCOffice::popFromDispatchQueueAtTime(QJsonArray *queue, QTi
 	return ret;
 }
 
-inline QJsonArray T3CTCOffice::calculateViewCooridnates(QJsonObject* rootObj_O) {
 
-//	QJsonValue blocksMap_O = (*rootObj_O)["blocksMap"];
-//	QJsonValue currTopBlockId_s = (*rootObj_O)["startingBlock1"];
-//	QJsonValue currBottomBlockId_s = (*rootObj_O)["startingBlock2"];
-//	QJsonArray currTopBlockLine_A = QJsonArray();
-//	QJsonArray currBottomBlockLine_A = QJsonArray();
-//	QJsonArray currBlockGridList_A = QJsonArray();
-//	while (true) {
-//		QJsonValue currIsDoubleLine_b = currBottomBlockId_s.toString() != "";
-//		QJsonValue currTopBlockObj_O = blocksMap_O.toObject()[currTopBlockId_s.toString()];
-//		QJsonValue currBottomBlockObj_O
-//			= currIsDoubleLine_b.toBool() ? blocksMap_O[currBottomBlockId_s.toString()] : QJsonValue(QJsonValue::Null);
-////		std::function<void(QJsonValue&, QJsonValue&)> spreadLength_f = [&](QJsonValue & blockLine1_A, QJsonValue & blockLine2_A) {
-////			QJsonValue theSmallerLength_n
-////				= qMin(blockLine1_A.toArray().size(), blockLine2_A.toArray().size());
-////			QJsonValue theBiggerLength_n
-////				= qMax(blockLine1_A.toArray().size(), blockLine2_A.toArray().size());
-////			QJsonValue theShorterBlockLine_O
-////				= blockLine1_A.toArray().size() == theSmallerLength_n.toInt()
-////				  ? blockLine1_A : blockLine2_A;
-////			QJsonValue newSmallerWidth_n = theBiggerLength_n.toDouble() / theSmallerLength_n.toDouble();
-////			{
-////				QJsonObject theShorterBlockLine_O_TEMP = theShorterBlockLine_O.toObject();
-////				for(QJsonObject::iterator currTopBlock_A = theShorterBlockLine_O_TEMP.begin()
-////					;currTopBlock_A != theShorterBlockLine_O_TEMP.end();++currTopBlock_A) {
-////					currTopBlock_A[1] = newSmallerWidth_n;
-////				}
-////			}
-////		};
+inline QJsonArray T3CTCOffice::searchPathsFromMetaInfo(const QJsonArray dispatchMetaInfo, const QJsonArray * trackConstantsObjects) {
+	//first, locate the correct trackConstantObject from trackConstantObjects
+	QJsonObject targetedBlockMap;
+	QString startingBlock1, startingBlock2, endingBlock1, endingBlock2;
+	for(qsizetype i = 0; i < trackConstantsObjects->size(); ++i) {
+		//assume trackConstantObjects is in right format
+		QJsonObject currBlocksMap = trackConstantsObjects->at(i).toObject().value("blocksMap").toObject();
+		if(currBlocksMap.contains(dispatchMetaInfo.at(1).toString())
+				&& currBlocksMap.contains(dispatchMetaInfo.at(2).toString())) {
+			targetedBlockMap = currBlocksMap;
+			startingBlock1 = trackConstantsObjects->at(i).toObject().value("startingBlock1").toString();
+			startingBlock2 = trackConstantsObjects->at(i).toObject().value("startingBlock2").toString();
+			endingBlock1 = trackConstantsObjects->at(i).toObject().value("endingBlock1").toString();
+			endingBlock2 = trackConstantsObjects->at(i).toObject().value("endingBlock2").toString();
+			break;
+		}
+	}
+	if(targetedBlockMap.isEmpty()
+			|| startingBlock1.isNull() || startingBlock2.isNull()
+			|| endingBlock1.isNull() || endingBlock2.isNull())
+		qFatal("T3Database::ctc_getPossiblePaths() cannot find the right block map or border block.");
 
-//		if (!currIsDoubleLine_b.toBool()
-//				&& currTopBlockId_s.toString() == (*rootObj_O)["endingBlock1"].toString()
-//				&& currBottomBlockId_s.toString() == (*rootObj_O)["endingBlock2"].toString()) {
-//			currTopBlockLine_A.push([currTopBlockId_s, 1]);
-//			currBlockGridList_A.push([[...currTopBlockLine_A], []]);
-//			break;
-//		} else if (currIsDoubleLine_b
-//				   && currTopBlockId_s == = rootObj_O["endingBlock1"]
-//											&& currBottomBlockId_s == = rootObj_O["endingBlock2"]) {
-//			currTopBlockLine_A.push([currTopBlockId_s, 1]);
-//			currBottomBlockLine_A.push([currBottomBlockId_s, 1]);
-//			spreadLength_f(currTopBlockLine_A, currBottomBlockLine_A);
-//			currBlockGridList_A.push([[...currTopBlockLine_A], [...currBottomBlockLine_A]]);
-//			break;
-//		} else if (currIsDoubleLine_b
-//				   && currTopBlockId_s != = currBottomBlockId_s
-//											&& (((currTopBlockId_s == = rootObj_O["endingBlock1"]
-//													|| (currTopBlockObj_O["prevBlock2"] != = ""
-//															&& currTopBlockObj_O["prevBlock2"] != = "PASSIVE"))
-//													&& currBottomBlockId_s != = rootObj_O["endingBlock2"]))) {
-//			currBottomBlockLine_A.push([currBottomBlockId_s, 1]);
-//			currBottomBlockId_s = currBottomBlockObj_O["nextBlock1"];
-//		} else if (currIsDoubleLine_b
-//				   && currTopBlockId_s != = currBottomBlockId_s
-//											&& (((currBottomBlockId_s == = rootObj_O["endingBlock2"]
-//													|| (currBottomBlockObj_O["prevBlock2"] != = ""
-//															&& currBottomBlockObj_O["prevBlock2"] != = "PASSIVE"))
-//													&& currTopBlockId_s != = rootObj_O["endingBlock1"]))) {
-//			currTopBlockLine_A.push([currTopBlockId_s, 1]);
-//			currTopBlockId_s = currTopBlockObj_O["nextBlock1"];
-//		} else if (currIsDoubleLine_b
-//				   && (currTopBlockObj_O["prevBlock2"] != = "" && currTopBlockObj_O["prevBlock2"] != = "PASSIVE")
-//				   && (currBottomBlockObj_O["prevBlock2"] != = "" && currBottomBlockObj_O["prevBlock2"] != = "PASSIVE")) {
-//			spreadLength_f(currTopBlockLine_A, currBottomBlockLine_A);
-//			currBlockGridList_A.push([[...currTopBlockLine_A], [...currBottomBlockLine_A]]);
-//			currTopBlockLine_A = [];
-//			currBottomBlockLine_A = [];
-//			currIsDoubleLine_b = false;
-//			currBlockGridList_A.push([[[currTopBlockId_s, 2]], []]); //switch has min width 2
-//			// currTopBlockLine_A.push([currTopBlockId_s, 1]);
-//			currTopBlockId_s = currTopBlockObj_O["nextBlock1"];
-//			currBottomBlockId_s = currTopBlockObj_O["nextBlock2"];
-//		} else if (!currIsDoubleLine_b
-//				   && !currIsDoubleLine_b
-//				   && currTopBlockObj_O["nextBlock2"] != = "") {
-//			// currTopBlockLine_A.push([currTopBlockId_s, 1]);
-//			currBlockGridList_A.push([[...currTopBlockLine_A], []]);
-//			currBlockGridList_A.push([[[currTopBlockId_s, 2]], []]); //switch has min width 2
-//			currTopBlockLine_A = [];
-//			currIsDoubleLine_b = true;
-//			currTopBlockId_s = currTopBlockObj_O["nextBlock1"];
-//			currBottomBlockId_s = currTopBlockObj_O["nextBlock2"];
-//		} else if (currIsDoubleLine_b) {
-//			currTopBlockLine_A.push([currTopBlockId_s, 1]);
-//			currBottomBlockLine_A.push([currBottomBlockId_s, 1]);
-//			currTopBlockId_s = currTopBlockObj_O["nextBlock1"];
-//			currBottomBlockId_s = currBottomBlockObj_O["nextBlock1"];
-//		} else if (!currIsDoubleLine_b) {
-//			currTopBlockLine_A.push([currTopBlockId_s, 1]);
-//			currTopBlockId_s = currTopBlockObj_O["nextBlock1"];
-//		}
-//	}
-//	let currBlockFlattenedTopList_A = [];
-//	let currBlockFlattenedBottomList_A = [];
-//	let currTopX_n = 0;
-//	let currBottomX_n = 0;
-//	for (let currBlockGrid_A of currBlockGridList_A) {
-//		for (let currTopBlock_A of currBlockGrid_A[0]) {
-//			currBlockFlattenedTopList_A.push([currTopBlock_A[0], [0, currTopX_n], currTopBlock_A[1]]);
-//			currTopX_n += currTopBlock_A[1];
-//		}
-//		for (let currBottomBlock_A of currBlockGrid_A[1]) {
-//			currBlockFlattenedBottomList_A.push([currBottomBlock_A[0], [1, currBottomX_n], currBottomBlock_A[1]]);
-//			currBottomX_n += currBottomBlock_A[1];
-//		}
-//		currBottomX_n = currTopX_n;
-//	}
-//	let concatedBlockFlattenedList_A
-//		= currBlockFlattenedTopList_A.concat(currBlockFlattenedBottomList_A);
-//	return concatedBlockFlattenedList_A;
+	QList<QList<QString>> retRawForward
+					   = T3CTCOffice::searchPaths
+						 (dispatchMetaInfo.at(1).toString()//origin block id
+						  , dispatchMetaInfo.at(2).toString()//destination block id
+						  , QSet<QString>() //empty string set
+						  , startingBlock1, startingBlock2, endingBlock1, endingBlock2
+						  , &targetedBlockMap
+						  , "FORWARD");
 
+	QList<QList<QString>> retRawReversed
+					   = T3CTCOffice::searchPaths
+						 (dispatchMetaInfo.at(1).toString()//origin block id
+						  , dispatchMetaInfo.at(2).toString()//destination block id
+						  , QSet<QString>() //empty string set
+						  , startingBlock1, startingBlock2, endingBlock1, endingBlock2
+						  , &targetedBlockMap
+						  , "REVERSED");
+
+	QJsonArray ret;
+	if(retRawForward != QList<QList<QString>>())
+		for(QList<QString>&currretRaw : retRawForward) {
+			ret.append(QJsonArray::fromStringList(currretRaw));
+		}
+	if(retRawReversed != QList<QList<QString>>())
+		for(QList<QString>&currretRaw : retRawReversed) {
+			ret.append(QJsonArray::fromStringList(currretRaw));
+		}
+	return ret;
 }
 
 #endif // T3CTCOFFICE_HPP

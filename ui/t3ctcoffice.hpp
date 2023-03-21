@@ -17,6 +17,7 @@ class T3CTCOffice {
 	 */
 	static QJsonArray searchPathsFromCsv(const QString filePath, const QJsonObject* stationToBlockIdMap, const QJsonArray dispatchMetaInfo, const QJsonArray* trackConstantsObjects);
 	static void enqueueDispatchRequest(QJsonArray* queue, const QJsonArray dispatchMetaInfo, const QJsonArray path);
+	static void discardDispatchRequest(int index, QJsonArray* queue);
 	static QJsonArray popFromDispatchQueueAtTime(QJsonArray* queue, QTime currTime);
 	static QJsonArray searchPathsFromMetaInfo(const QJsonArray dispatchMetaInfo, const QJsonArray* trackConstantsObjects);
   private:
@@ -242,8 +243,9 @@ inline QJsonArray T3CTCOffice::searchPathsFromCsv(const QString filePath, const 
 		}
 	}
 	return possibleCombPaths;
-
 }
+
+
 inline void T3CTCOffice::enqueueDispatchRequest(QJsonArray * queue, const QJsonArray dispatchMetaInfo, const QJsonArray path) {
 	QJsonObject dispatchObject;
 	if(dispatchMetaInfo.size() != 4)
@@ -266,6 +268,11 @@ inline void T3CTCOffice::enqueueDispatchRequest(QJsonArray * queue, const QJsonA
 		}
 	}
 	queue->append(dispatchObject);//if empty or later than all
+}
+
+inline void T3CTCOffice::discardDispatchRequest(int index, QJsonArray *queue) {
+	if(index < 0 && index >= queue->count()) return;
+	queue->removeAt(index);
 }
 
 inline QJsonArray T3CTCOffice::popFromDispatchQueueAtTime(QJsonArray * queue, QTime currTime) {

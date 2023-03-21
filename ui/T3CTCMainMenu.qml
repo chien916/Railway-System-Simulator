@@ -62,8 +62,14 @@ Item {
 			T3Button{
 				width: colu_column.width
 				height: colu_column.unitHeight_r
-				buttonLabel_s: "Manually Dispatch"
+				buttonLabel_s: "Request Dispatch"
 				onButtonClicked: menuButtonClicked("manuallyDispatch")
+			}
+			T3Button{
+				width: colu_column.width
+				height: colu_column.unitHeight_r
+				buttonLabel_s: "View Dispatch Queue"
+				onButtonClicked: menuButtonClicked("viewDispatchQueue");
 			}
 			T3Button{
 				width: colu_column.width

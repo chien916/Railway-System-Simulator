@@ -94,20 +94,20 @@ Item {
 
 	function db2view(){
 		if(!t3databaseQml.trackVariablesObjects_QML||dbIndex_n===-1) return;
-		//console.log(t3databaseQml.getTrackProperty(blockId_s,0))
-		reap_repeater.itemAt(0).valueratio_r = t3databaseQml.getTrackProperty(blockId_s,10)?1.0:0.0
-		reap_repeater.itemAt(1).valueratio_r = t3databaseQml.getTrackProperty(blockId_s,1)?1.0:0.0
+		//console.log(t3databaseQml.km_getTrackProperty(blockId_s,0))
+		reap_repeater.itemAt(0).valueratio_r = t3databaseQml.km_getTrackProperty(blockId_s,10)?1.0:0.0
+		reap_repeater.itemAt(1).valueratio_r = t3databaseQml.km_getTrackProperty(blockId_s,1)?1.0:0.0
 		reap_repeater.itemAt(2).valueratio_r
-				= t3databaseQml.getTrackProperty(blockId_s,0)/100
-		reap_repeater.itemAt(3).valueratio_r = t3databaseQml.getTrackProperty(blockId_s,2)?1.0:0.0
+				= t3databaseQml.km_getTrackProperty(blockId_s,0)/100
+		reap_repeater.itemAt(3).valueratio_r = t3databaseQml.km_getTrackProperty(blockId_s,2)?1.0:0.0
 	}
 
 	function view2db(){
 		if(!t3databaseQml.trackVariablesObjects_QML||dbIndex_n===-1) return;
-		t3databaseQml.setTrackProperty(blockId_s,10,reap_repeater.itemAt(0).actualValue_r>0.5);
-		t3databaseQml.setTrackProperty(blockId_s,1,reap_repeater.itemAt(1).actualValue_r>0.5);
-		t3databaseQml.setTrackProperty(blockId_s,0,reap_repeater.itemAt(2).actualValue_r);
-		t3databaseQml.setTrackProperty(blockId_s,2,reap_repeater.itemAt(3).actualValue_r>0.5);
+		t3databaseQml.km_setTrackProperty(blockId_s,10,reap_repeater.itemAt(0).actualValue_r>0.5);
+		t3databaseQml.km_setTrackProperty(blockId_s,1,reap_repeater.itemAt(1).actualValue_r>0.5);
+		t3databaseQml.km_setTrackProperty(blockId_s,0,reap_repeater.itemAt(2).actualValue_r);
+		t3databaseQml.km_setTrackProperty(blockId_s,2,reap_repeater.itemAt(3).actualValue_r>0.5);
 	}
 
 	//for testing only

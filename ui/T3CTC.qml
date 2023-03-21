@@ -21,6 +21,7 @@ Item {
 	property bool configMode_b: false
 	property bool menuMode_b:false
 	property bool dispatchMode_b: false
+	property bool dispatchQueueMode_b: false
 	Timer{
 		interval: 1
 		repeat: true
@@ -45,16 +46,25 @@ Item {
 			y:T3Styling.spacing_r*2
 			width: root.width*0.3
 			height: T3Styling.margin_r
-			buttonLabel_s: "CTC MENU"
+			buttonLabel_s: (configMode_b||dispatchQueueMode_b)?"GO BACK":"CTC MENU"
 			opacity: !dispatchMode_b
 			Behavior on opacity {PropertyAnimation{easing.type: Easing.OutCirc}}
 			onButtonClicked: {
-				if(configMode_b||dispatchMode_b) menuMode_b = false
-				else{
-					if(menuMode_b){
-						t3databaseQml.setTimerRate(cust_mainMenu.clockRate_i);
-					}
-					menuMode_b = !menuMode_b
+				if(menuMode_b){
+					t3databaseQml.setTimerRate(cust_mainMenu.clockRate_i);
+					configMode_b = false;
+					dispatchQueueMode_b = false;
+					menuMode_b = false;
+				}else if(configMode_b||dispatchQueueMode_b){
+					configMode_b = false;
+					dispatchQueueMode_b = false;
+					menuMode_b = false;
+				}else if(dispatchMode_b){
+					//do nothing
+				}else{
+					configMode_b = false;
+					dispatchQueueMode_b = false;
+					menuMode_b = true;
 				}
 			}
 		}
@@ -119,8 +129,10 @@ Item {
 							cBloc_configBlock.dbIndex_n = index;
 							cBloc_configBlock.blockId_s = blockId_s
 
-							rBlo_railBlockSelected.blockConstantsObject_O = trackConstantsObject_O[blockId_s]
-							rBlo_railBlockSelected.blockVariablesObject_O = trackVariablesObject_O[blockId_s]
+							rBlo_railBlockSelected.blockConstantsObject_O
+									= t3databaseQml.trackConstantsObjects_QML[index]["blocksMap"][blockId_s]
+							rBlo_railBlockSelected.blockVariablesObject_O
+									= t3databaseQml.trackVariablesObjects_QML[index][blockId_s]
 							configMode_b = true;
 						}
 
@@ -141,7 +153,7 @@ Item {
 			source: colu_column
 			radius: 50
 			samples: 100
-			opacity: configMode_b||menuMode_b?1:0
+			opacity: (configMode_b||menuMode_b||dispatchQueueMode_b)?1:0
 			Behavior on opacity {PropertyAnimation{easing.type: Easing.OutCirc}}
 		}
 
@@ -179,6 +191,16 @@ Item {
 			onApplyClicked: configMode_b = false
 		}
 
+
+
+		T3CTCQueueBlock{
+			id:cust_dispatchQueueBlock
+			width: root.width*0.6
+			height: rect_railBlockSelected.height
+			x:dispatchQueueMode_b?root.width*1/2-width/2:-width*5
+			Behavior on x{ PropertyAnimation {easing.type: Easing.InOutCirc }}
+			y:rect_railBlockSelected.y
+		}
 		T3CTCMainMenu{
 			id:cust_mainMenu
 			x:menuMode_b?root.width*1/2-width/2:-width*5
@@ -189,6 +211,10 @@ Item {
 			onMenuButtonClicked: {
 				if(metaInfo_s==="manuallyDispatch"){
 					dispatchMode_b = true;
+					menuMode_b = false;
+				}
+				else if(metaInfo_s==="viewDispatchQueue"){
+					dispatchQueueMode_b = true;
 					menuMode_b = false;
 				}
 			}

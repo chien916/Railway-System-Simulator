@@ -75,5 +75,6 @@
         <file>T3TrainSound.qml</file>
         <file>I2DemoTerain.qml</file>
         <file>T3CTCDispatchBlock.qml</file>
+        <file>T3CTCQueueBlock.qml</file>
     </qresource>
 </RCC>

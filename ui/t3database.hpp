@@ -71,6 +71,8 @@ class T3Database: public QObject {
 	Q_INVOKABLE void db_toggleFirebase(bool enable);
 	Q_INVOKABLE void db_pushToFirebase(uint8_t selector = 0b11111111);
 	Q_INVOKABLE void db_pullFromFirebase(uint8_t selector = 0b11111111);
+  private:
+
 	//====================================================
 	//=====================CTC-OFFICE=====================
 	//=====================中央调度中心=====================
@@ -89,6 +91,8 @@ class T3Database: public QObject {
   signals:
 	void onDispatchQueueChanged();
 	void onStationToBlockIdMapChanged();
+  private:
+	void ctc_iterate();
 	//====================================================
 	//=====================TRACK-MODEL====================
 	//=====================铁路铁轨模型=====================
@@ -103,17 +107,20 @@ class T3Database: public QObject {
 	Q_INVOKABLE void km_addTrackFromCsv(const QString filePath);
 	Q_INVOKABLE void km_setTrackProperty(QString blockId, int trackProperty, QVariant value);
 	Q_INVOKABLE QVariant km_getTrackProperty(QString blockId, int trackProperty);
-	Q_INVOKABLE void km_placeTrainOnTrack(QString trainId, QString blockId, bool isForward);
 
   signals:
 	void onTrackConstantsObjectsChanged();
 	void onTrackVariablesObjectsChanged();
+  private:
+	void km_iterate();
 	//====================================================
 	//==================TRACK-CONTROLLER==================
 	//=====================铁路铁轨控制=====================
 	//====================================================
   public:
   signals:
+  private:
+	void kc_iterate();
 	//====================================================
 	//=====================TRAIN-MODEL====================
 	//=====================铁道火车模型=====================
@@ -124,16 +131,19 @@ class T3Database: public QObject {
 
 	Q_INVOKABLE void nm_setTrainProperty(QString trainId, int trainProperty, QVariant value);
 	Q_INVOKABLE QVariant nm_getTrainProperty(QString trainId, int trainProperty);
-	Q_INVOKABLE void nm_createNewTrain(const QString trainId, const QString originBlockId/*, bool moveDirection*/);
 	Q_INVOKABLE void nm_removeTrain(const QString trainId);
   signals:
 	void onTrainObjectsChanged();
+  private:
+	void nm_iterate();
 	//====================================================
 	//==================TRAIN-CONTROLLER==================
 	//=====================铁道控制模型=====================
 	//====================================================
   public:
   signals:
+  private:
+	void nc_iterate();
 	//====================================================
 	//=====================MICELLANOUS====================
 	//=========================其他========================
@@ -178,6 +188,7 @@ class T3Database: public QObject {
 			   , std::make_pair(T3TrainModel::TrainProperty::Pid_Ki, QPair<QString, int>(QString("pid_ki"), qMetaTypeId<float>()))
 			   , std::make_pair(T3TrainModel::TrainProperty::Pid_Kp, QPair<QString, int>(QString("pid_kp"), qMetaTypeId<float>()))
 			   , std::make_pair(T3TrainModel::TrainProperty::Pid_Kd, QPair<QString, int>(QString("pid_kd"), qMetaTypeId<float>()))
+			   , std::make_pair(T3TrainModel::TrainProperty::Path, QPair<QString, int>(QString("path"), qMetaTypeId<QJsonArray>()))
 			  };
 
 	QTime currentTime;
@@ -192,63 +203,8 @@ class T3Database: public QObject {
 	Q_INVOKABLE void setTimerRate(int rate);
   signals:
 	void onCurrentTimeChanged();
+
 };
-
-/**
- * @brief T3Database::setTrackProperty
- * @param request
- * Patch variables with certain values
- *
- */
-inline void T3Database::km_setTrackProperty(QString blockId, int trackProperty, QVariant value) {
-	if(trackProperty < 0 || trackProperty >= trackPropertiesMetaDataMap.size())
-		qFatal("T3Database::km_setTrackProperty() -> trackProperty is invalid");
-	T3TrackModel::setTrackProperty(blockId, static_cast<T3TrackModel::TrackProperty>(trackProperty), value, &trackVariablesObjects, &trackPropertiesMetaDataMap);
-	Q_EMIT onTrackVariablesObjectsChanged();
-	db_pushToFirebase(TrackVariablesObjects);
-}
-
-inline void T3Database::km_placeTrainOnTrack(QString trainId, QString blockId, bool isForward) {
-	T3TrackModel::placeTrainOnTrack(trainId, blockId, isForward, &trackVariablesObjects);
-	Q_EMIT onTrackVariablesObjectsChanged();
-	db_pushToFirebase(TrackVariablesObjects);
-}
-
-inline void T3Database::nm_setTrainProperty(QString trainId, int trainProperty, QVariant value) {
-	if(trainProperty < 0 || trainProperty >= trainPropertiesMetaDataMap.size())
-		qFatal("T3Database::km_setTrainProperty() -> trainProperty is invalid");
-	T3TrainModel::setTrainProperty(trainId, static_cast<T3TrainModel::TrainProperty>(trainProperty), value, &trainObjects, &trainPropertiesMetaDataMap);
-	Q_EMIT onTrainObjectsChanged();
-	db_pushToFirebase(TrainObjects);
-}
-
-inline QVariant T3Database::nm_getTrainProperty(QString trainId, int trainProperty) {
-	if(trainProperty < 0 || trainProperty >= trainPropertiesMetaDataMap.size())
-		qFatal("T3Database::nm_getTrainProperty() -> trainProperty is invalid");
-	return T3TrainModel::getTrainProperty(trainId, static_cast<T3TrainModel::TrainProperty>(trainProperty), &trainObjects, &trainPropertiesMetaDataMap);
-}
-
-inline QVariant T3Database::km_getTrackProperty(QString blockId, int trackProperty) {
-	if(trackProperty < 0 || trackProperty >= trackPropertiesMetaDataMap.size())
-		qFatal("T3Database::km_getTrackProperty() -> trackProperty is invalid");
-	return T3TrackModel::getTrackProperty(blockId, static_cast<T3TrackModel::TrackProperty>(trackProperty), &trackVariablesObjects, &trackPropertiesMetaDataMap);
-}
-
-
-
-inline void T3Database::nm_createNewTrain(const QString trainId, const QString originBlockId) {
-	T3TrainModel::createNewTrain(trainId, &trainObjects);
-	Q_EMIT onTrainObjectsChanged();
-	db_pushToFirebase(TrainObjects);
-}
-
-inline void T3Database::nm_removeTrain(const QString trainId) {
-	T3TrainModel::removeTrain(trainId, &trainObjects);
-	Q_EMIT onTrainObjectsChanged();
-	db_pushToFirebase(TrainObjects);
-	Q_INVOKABLE void removeTrainFromCtc(const QString trainId);
-}
-
 
 inline T3Database::T3Database(QObject * parent) : QObject(parent) {
 	//	//TESTING FOR RAIL LOADING
@@ -260,32 +216,15 @@ inline T3Database::T3Database(QObject * parent) : QObject(parent) {
 	//ctc_getPossiblePaths(QJsonArray{QString("1234"), QString("R_C_8"), QString("R_B_6"), QString("12:34")});
 }
 
+//====================================================
+//=====================FIREBASE DB====================
+//=====================网络在线数据库===================
+//====================================================
+
 inline void T3Database::db_toggleFirebase(bool enableFirebase) {
 	if(enableFirebase == this->firebaseEnabled) return;
 	if(enableFirebase) db_pushToFirebase();
 	firebaseEnabled = enableFirebase;
-}
-
-
-//inline void T3Database::trainIterate() {
-//	for(qsizetype i = 0; i < trainObjects.size(); ++i) {
-//		QJsonObject currTrainObject = trainObjects.at(i).toObject();
-
-
-
-//		trainObjects.replace(i, currTrainObject);
-//	}
-//	Q_EMIT onTrainObjectsChanged();
-//}
-
-
-
-inline void T3Database::timerEvent(QTimerEvent *event) {
-	//update time
-	this->currentTime = this->currentTime.addMSecs(100 * static_cast<int>(timerRate));
-	Q_EMIT onCurrentTimeChanged();
-	//check queue
-
 }
 
 inline void T3Database::db_pushToFirebase(uint8_t selector) {
@@ -320,9 +259,12 @@ inline void T3Database::db_pullFromFirebase(uint8_t selector) {
 			Q_EMIT onTrackVariablesObjectsChanged();
 		});
 	}
-
 }
 
+//====================================================
+//=====================CTC-OFFICE=====================
+//=====================中央调度中心=====================
+//====================================================
 inline QJsonArray T3Database::ctc_getPossiblePathsFromMetaInfo(const QJsonArray dispatchMetaInfo) {
 	return T3CTCOffice::searchPathsFromMetaInfo(dispatchMetaInfo, &trackConstantsObjects);
 }
@@ -343,12 +285,133 @@ inline void T3Database::ctc_discardDispatchRequest(const int index) {
 	db_pushToFirebase(DispatchQueue);
 }
 
+/**
+ * @brief T3Database::ctc_iterate
+ * 检查当前时间，并且判断发车队列中有没有需要发车的（当前时间大于计划时间)
+ */
+inline void T3Database::ctc_iterate() {
+	//
+	const QList<QJsonObject> poppedRequests = T3CTCOffice::popFromDispatchQueueAtTime(&dispatchQueue, currentTime);
+	for(const QJsonObject& currRequest : poppedRequests) {
+		QString trainId = currRequest.value("trainId").toString();
+		QString origin = currRequest.value("origin").toString();
+		QString destination = currRequest.value("destination").toString();
+		QJsonArray path = currRequest.value("path").toArray();
+		//determine if the train is moving forward or backward
+		bool isForward = (path.size() > 1)
+						 ? T3TrackModel::determineMovingDirection(origin, path.at(1).toString(), &trackConstantsObjects) == "FORWARD"
+						 : true;
+		QString trainOnBlockConcatStr = QString("%1_%2_0.0").arg(trainId).arg(isForward ? "F" : "R");
+		//place train on track
+		T3TrackModel::setTrackProperty(origin, T3TrackModel::TrainOnBlock, trainOnBlockConcatStr, &trackVariablesObjects, &trackPropertiesMetaDataMap);
+
+		//add train to train object
+		T3TrainModel::createNewTrain(trainId, path, &trainObjects);
+	}
+	Q_EMIT onTrackVariablesObjectsChanged();
+	Q_EMIT onTrainObjectsChanged();
+	Q_EMIT onDispatchQueueChanged();
+	db_pushToFirebase(TrackVariablesObjects | TrainObjects | DispatchQueue);
+}
+//====================================================
+//==================TRACK-CONTROLLER==================
+//=====================铁路铁轨控制=====================
+//====================================================
+
+inline void T3Database::kc_iterate() {
+
+}
+
+//====================================================
+//=====================TRACK-MODEL====================
+//=====================铁路铁轨模型=====================
+//====================================================
+
+inline QVariant T3Database::km_getTrackProperty(QString blockId, int trackProperty) {
+	if(trackProperty < 0 || trackProperty >= trackPropertiesMetaDataMap.size())
+		qFatal("T3Database::km_getTrackProperty() -> trackProperty is invalid");
+	return T3TrackModel::getTrackProperty(blockId, static_cast<T3TrackModel::TrackProperty>(trackProperty), &trackVariablesObjects, &trackPropertiesMetaDataMap);
+}
+
+
+inline void T3Database::km_setTrackProperty(QString blockId, int trackProperty, QVariant value) {
+	if(trackProperty < 0 || trackProperty >= trackPropertiesMetaDataMap.size())
+		qFatal("T3Database::km_setTrackProperty() -> trackProperty is invalid");
+	T3TrackModel::setTrackProperty(blockId, static_cast<T3TrackModel::TrackProperty>(trackProperty), value, &trackVariablesObjects, &trackPropertiesMetaDataMap);
+	Q_EMIT onTrackVariablesObjectsChanged();
+	db_pushToFirebase(TrackVariablesObjects);
+}
+
+
 inline void T3Database::km_addTrackFromCsv(const QString filePath) {
 	T3TrackModel::addTrackFromCsv(filePath, &trackConstantsObjects, &trackVariablesObjects, &stationToBlockIdMap);
 	Q_EMIT onTrackConstantsObjectsChanged();
 	Q_EMIT onTrackVariablesObjectsChanged();
 	Q_EMIT onStationToBlockIdMapChanged();
 	db_pushToFirebase(TrackConstantsObjects | TrackVariablesObjects);
+}
+
+inline void T3Database::km_iterate() {
+
+}
+
+
+//====================================================
+//=====================TRAIN-MODEL====================
+//=====================铁道火车模型=====================
+//====================================================
+
+inline QVariant T3Database::nm_getTrainProperty(QString trainId, int trainProperty) {
+	if(trainProperty < 0 || trainProperty >= trainPropertiesMetaDataMap.size())
+		qFatal("T3Database::nm_getTrainProperty() -> trainProperty is invalid");
+	return T3TrainModel::getTrainProperty(trainId, static_cast<T3TrainModel::TrainProperty>(trainProperty), &trainObjects, &trainPropertiesMetaDataMap);
+}
+
+inline void T3Database::nm_setTrainProperty(QString trainId, int trainProperty, QVariant value) {
+	if(trainProperty < 0 || trainProperty >= trainPropertiesMetaDataMap.size())
+		qFatal("T3Database::km_setTrainProperty() -> trainProperty is invalid");
+	T3TrainModel::setTrainProperty(trainId, static_cast<T3TrainModel::TrainProperty>(trainProperty), value, &trainObjects, &trainPropertiesMetaDataMap);
+	Q_EMIT onTrainObjectsChanged();
+	db_pushToFirebase(TrainObjects);
+}
+
+
+inline void T3Database::nm_removeTrain(const QString trainId) {
+	T3TrainModel::removeTrain(trainId, &trainObjects);
+	Q_EMIT onTrainObjectsChanged();
+	db_pushToFirebase(TrainObjects);
+	Q_INVOKABLE void removeTrainFromCtc(const QString trainId);
+}
+
+inline void T3Database::nm_iterate() {
+
+}
+
+
+//====================================================
+//==================TRAIN-CONTROLLER==================
+//=====================铁路火车控制=====================
+//====================================================
+
+inline void T3Database::nc_iterate() {
+
+}
+
+
+
+//====================================================
+//=====================MICELLANOUS====================
+//=========================其他========================
+//====================================================
+
+inline void T3Database::timerEvent(QTimerEvent *event) {
+	Q_UNUSED(event);
+	//update time
+	this->currentTime = this->currentTime.addMSecs(100 * static_cast<int>(timerRate));
+	Q_EMIT onCurrentTimeChanged();
+	//check queue
+	ctc_iterate();
+
 }
 
 inline QString T3Database::getCurrentTime() {

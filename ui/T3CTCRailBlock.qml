@@ -75,7 +75,7 @@ Item {
 	 property bool trainMoveForward_b:{
 		if(!ready_b) return false;
 		if(trainInfo_s==="") return false;
-		return blockVariablesObject_O["trainOnBlock"].split("_")[1].includes("F")
+		return trainInfo_s.split("_")[1].includes("F")
 	}
 	property bool sUp_b:{
 		if(!ready_b) return false;

@@ -34,13 +34,14 @@ class T3TrainModel {
 		, Pid_Ki = 21
 		, Pid_Kp = 22
 		, Pid_Kd = 23
+		, Path = 24
 	};
 
 	static void setTrainProperty(QString trainId, TrainProperty trainProperty, QVariant value, QJsonArray* trainObjects, const QHash<T3TrainModel::TrainProperty, QPair<QString, int>>*const trainPropertiesMetaDataMap);
 	static QVariant getTrainProperty(QString trainId, TrainProperty trainProperty, const  QJsonArray* trainObjects, const QHash<T3TrainModel::TrainProperty, QPair<QString, int>>*const trainPropertiesMetaDataMap);
 
 	static void removeTrain(const QString trainId, QJsonArray* trainObjects);
-	static void createNewTrain(const QString trainId, QJsonArray* trainObjects);
+	static void createNewTrain(const QString trainId, const QJsonArray path, QJsonArray* trainObjects);
 	static void trainTravelIterate(const QJsonObject *train, QVarLengthArray<QPair<const QJsonObject *, QJsonObject *>, 5> &quintupleBlocks);
 
 
@@ -107,7 +108,7 @@ inline void T3TrainModel::removeTrain(const QString trainId, QJsonArray *trainOb
 }
 
 
-inline void T3TrainModel::createNewTrain(const QString trainId, QJsonArray *trainObjects) {
+inline void T3TrainModel::createNewTrain(const QString trainId, const QJsonArray path, QJsonArray *trainObjects) {
 	QJsonObject trainObject;
 	trainObject.insert(QString("id"), trainId);
 	trainObject.insert(QString("length"), 32.2);
@@ -133,6 +134,7 @@ inline void T3TrainModel::createNewTrain(const QString trainId, QJsonArray *trai
 	trainObject.insert(QString("pid_ki"), 0.0);
 	trainObject.insert(QString("pid_kp"), 0.0);
 	trainObject.insert(QString("pid_kd"), 0.0);
+	trainObject.insert(QString("path"), path);
 	//setTrackProperty(originBlockId, TrackProperty::TrainOnBlock, trainId);
 	trainObjects->push_front(trainObject);
 }

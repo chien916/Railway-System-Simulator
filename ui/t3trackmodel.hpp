@@ -21,12 +21,11 @@ class T3TrackModel {
 
 	static bool connectedToTrackController;
 	static bool connectedToTrainModel;
-	static void placeTrainOnTrack(QString trainId, QString blockId, bool isForward, QJsonArray* trackVariableObjects);
 
 	static void trackIterate(QJsonArray* trackVariableObjects, const QJsonArray* trackConstantsObjects);
 	static void plcIterate(QVarLengthArray<QPair<const QJsonObject*, QJsonObject*>, 5>& quintupleBlocks);
 	static void addTrackFromCsv(const QString filePath, QJsonArray* trackConstantsObjects, QJsonArray*trackVariablesObjects, QJsonObject* stationToIdMapObject);
-
+	static QString determineMovingDirection(const QString currBlockId, const QString nextOrPrevBlockId, const QJsonArray* trackConstantsObjects);
 	static void setTrackProperty(QString blockId, T3TrackModel::TrackProperty trackProperty, QVariant value, QJsonArray*trackVariablesObjects
 								 , const QHash<T3TrackModel::TrackProperty, QPair<QString, int>>*const trackPropertiesMetaDataMap);
 	static QVariant getTrackProperty(QString blockId, T3TrackModel::TrackProperty trackProperty, const QJsonArray *trackVariablesObjects
@@ -192,6 +191,31 @@ inline void T3TrackModel::addTrackFromCsv(const QString filePath, QJsonArray* tr
 	fileToWriteLog2.close();
 }
 
+inline QString T3TrackModel::determineMovingDirection(const QString currBlockId, const QString nextOrPrevBlockId, const QJsonArray* trackConstantsObjects) {
+	for(qsizetype i = 0; i < trackConstantsObjects->size(); ++i) {
+		const QJsonObject currLineBlockMapObject = trackConstantsObjects->at(i).toObject().value("blocksMap").toObject();
+		const QString startingBlock1 = trackConstantsObjects->at(i).toObject().value("startingBlock1").toString();
+		const QString startingBlock2 = trackConstantsObjects->at(i).toObject().value("startingBlock2").toString();
+		const QString endingBlock1 = trackConstantsObjects->at(i).toObject().value("endingBlock1").toString();
+		const QString endingBlock2 = trackConstantsObjects->at(i).toObject().value("endingBlock2").toString();
+		if(currLineBlockMapObject.contains(currBlockId)) {
+			QString nextBlock1 = currLineBlockMapObject.value(currBlockId).toObject().value("nextBlock1").toString();
+			QString nextBlock2 = currLineBlockMapObject.value(currBlockId).toObject().value("nextBlock2").toString();
+			QString prevBlock1 = currLineBlockMapObject.value(currBlockId).toObject().value("prevBlock1").toString();
+			QString prevBlock2 = currLineBlockMapObject.value(currBlockId).toObject().value("prevBlock2").toString();
+			if(nextOrPrevBlockId == nextBlock1 || nextOrPrevBlockId == nextBlock2) return "FORWARD";
+			else if(nextOrPrevBlockId == prevBlock1 || nextOrPrevBlockId == prevBlock2)return "REVERSED";
+			else if("START_T" == prevBlock1 && startingBlock2 == nextOrPrevBlockId) return "REVERSED";
+			else if("START_B" == prevBlock1 && startingBlock1 == nextOrPrevBlockId)return "REVERSED";
+			else if("END_T" == prevBlock1 && endingBlock2 == nextOrPrevBlockId)return "FORWARD";
+			else if("END_B" == prevBlock1 && endingBlock1 == nextOrPrevBlockId)return "FORWARD";
+			else qFatal("T3TrackModel::determineMovingDirection() -> Origin Track found, but nextOrPrevBlock is not neiboring block.");
+		}
+	}
+	qFatal("T3TrackModel::determineMovingDirection() -> Origin Track not found");
+	return "";
+}
+
 inline void T3TrackModel::setTrackProperty(QString blockId, TrackProperty trackProperty, QVariant value, QJsonArray *trackVariablesObjects
 		, const QHash<T3TrackModel::TrackProperty, QPair<QString, int>>*const trackPropertiesMetaDataMap) {
 	QPair<QString, int> metaData = trackPropertiesMetaDataMap->value(trackProperty);
@@ -231,10 +255,6 @@ inline QVariant T3TrackModel::getTrackProperty(QString blockId, TrackProperty tr
 	}
 	qFatal("T3Database::getTrackProperty() -> cannot find the block id insetTrackPropertyted");
 	return QVariant();//should not reach this step..
-}
-
-inline void T3TrackModel::placeTrainOnTrack(QString trainId, QString blockId, bool isForward, QJsonArray *trackVariableObjects) {
-
 }
 
 inline void T3TrackModel::trackIterate(QJsonArray *trackVariablesObjects, const QJsonArray* trackConstantsObjects) {

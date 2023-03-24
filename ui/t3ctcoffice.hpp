@@ -18,7 +18,7 @@ class T3CTCOffice {
 	static QJsonArray searchPathsFromCsv(const QString filePath, const QJsonObject* stationToBlockIdMap, const QJsonArray dispatchMetaInfo, const QJsonArray* trackConstantsObjects);
 	static void enqueueDispatchRequest(QJsonArray* queue, const QJsonArray dispatchMetaInfo, const QJsonArray path);
 	static void discardDispatchRequest(int index, QJsonArray* queue);
-	static QJsonArray popFromDispatchQueueAtTime(QJsonArray* queue, QTime currTime);
+	static QList<QJsonObject> popFromDispatchQueueAtTime(QJsonArray* queue, QTime currTime);
 	static QJsonArray searchPathsFromMetaInfo(const QJsonArray dispatchMetaInfo, const QJsonArray* trackConstantsObjects);
   private:
 	static QList<QList<QString>> searchPaths (const QString originBlockId, const QString destBlockId, QSet<QString> pathSet
@@ -188,7 +188,9 @@ inline QJsonArray T3CTCOffice::searchPathsFromCsv(const QString filePath, const 
 	//get a aggregation of paths, each one maps to an distinct combination of station blocks
 	QJsonArray possibleCombPaths;
 	{
-		for(quint64 comb = 0; comb < (1 << stationToBinamacIndMap.size()); ++comb) {
+		for(quint32 comb = 0
+						   ; comb < (static_cast<quint32>(1) << stationToBinamacIndMap.size())
+				; ++comb) {
 
 			//get the current station block ids for this combination
 			QList<QString> currStationBlockIds;
@@ -275,16 +277,16 @@ inline void T3CTCOffice::discardDispatchRequest(int index, QJsonArray *queue) {
 	queue->removeAt(index);
 }
 
-inline QJsonArray T3CTCOffice::popFromDispatchQueueAtTime(QJsonArray * queue, QTime currTime) {
-	QJsonArray ret;
-	do {
+inline QList<QJsonObject> T3CTCOffice::popFromDispatchQueueAtTime(QJsonArray * queue, QTime currTime) {
+	QList<QJsonObject> ret;
+	while(true) {
 		if(queue->empty()) break;
 		QTime currDispatchTime = QTime::fromString(queue->first().toObject().value("time").toString(), "HH:mm");
 		if(!currDispatchTime.isValid())
 			qFatal("T3CTCOffice::popFromDispatchQueueAtTime() time from queue is not valid");
 		if(currDispatchTime > currTime) break;
-		ret.push_back(queue->takeAt(0));
-	} while(true);
+		ret.push_back(queue->takeAt(0).toObject());
+	}
 	return ret;
 }
 

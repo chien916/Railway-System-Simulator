@@ -20,7 +20,7 @@ ApplicationWindow {
 		buttonLabel_s: "PULL FROM FIREBASE"
 		anchors.horizontalCenter: bg.horizontalCenter
 		onButtonClicked: {
-			t3databaseQml.pullFromFirebase()
+			t3databaseQml.db_pullFromFirebase()
 		}
 	}
 

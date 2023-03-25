@@ -17,6 +17,8 @@ class T3TrackModel {
 		, Heaters = 8 //string
 		, PeopleOnStation = 9 //int
 		, MaintainanceMode = 10
+		, PlcInput = 11
+		, PlcOutput = 12
 	};
 
 	static bool connectedToTrackController;
@@ -162,6 +164,8 @@ inline void T3TrackModel::addTrackFromCsv(const QString filePath, QJsonArray* tr
 			currBlockVarObj.insert("heaters", QString(""));
 			currBlockVarObj.insert("peopleOnStation", static_cast<float>(0.0));
 			currBlockVarObj.insert("maintainanceMode", false);
+			currBlockVarObj.insert("plcInput", QString(32, QChar('0')));
+			currBlockVarObj.insert("plcOutput", QString(32, QChar('0')));
 			currTrackVarObj.insert(currLineSplitted.at(0), currBlockVarObj);
 		}
 	}

@@ -340,30 +340,13 @@ Item {
 	}
 
 	function view2db(){
-		if(!t3databaseQml.trackVariablesObjects_QML) return;
-		//handles authority
-		//add new authorities
-		if(tInp_dispatchFrom.text==="  ")
-			t3databaseQml.kc_revokeAuthority(blockId_s)
-		else{
-			let paths_A = t3databaseQml.ctc_getPossiblePathsFromMetaInfo(["____",blockId_s,tInp_dispatchFrom.text.split(" ").join("_"),"__:__"]);
-			if(paths_A.length===0){
-				rect_errMessage.showMessage("No Path Found");
-				return;
-			}
-			paths_A.sort((a_A,b_A)=>a_A.length-b_A.length);
-			t3databaseQml.kc_grantAuthority(paths_A[0]);
-		}
-		//handles maintanaceMode
-		t3databaseQml.km_setTrackProperty(blockId_s,10,custom_maintainanceMode.valueratio_r>0.5);
-		//handles suggested speed
-		t3databaseQml.km_setTrackProperty(blockId_s,0,cust_suggestedSpeed.actualValue_r);
-		//handles switch position
-		if(switchSide_s==="left")
-			t3databaseQml.km_setTrackProperty(blockId_s,2,cust_switchDial.currValue_n===0.36);
-		else if(switchSide_s==="right")
-			t3databaseQml.km_setTrackProperty(blockId_s,2,cust_switchDial.currValue_n===0.64);
-		//console.log(custom_maintainanceMode.valueratio_r>0.5)
+		let metaInfo_A = [
+				custom_maintainanceMode.valueratio_r>0.5,
+				cust_suggestedSpeed.actualValue_r,
+				cust_switchDial.currValue_n===((switchSide_s==="left")?0.36:0.64),
+				tInp_dispatchFrom.text.split(" ").join("_")
+			]
+		t3databaseQml.ctc_writeToPlcInputFromMetaInfo(blockId_s,metaInfo_A);
 	}
 
 	//for testing only

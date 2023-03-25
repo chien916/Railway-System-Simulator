@@ -20,7 +20,11 @@ class T3CTCOffice {
 	static void discardDispatchRequest(int index, QJsonArray* queue);
 	static QList<QJsonObject> popFromDispatchQueueAtTime(QJsonArray* queue, QTime currTime);
 	static QJsonArray searchPathsFromMetaInfo(const QJsonArray dispatchMetaInfo, const QJsonArray* trackConstantsObjects);
+	static void writeToPlcInputFromMetaInfo(const QString blockId, const QJsonArray* metaInfo, const QJsonArray* trackConstantsObjects, QJsonArray* trackVariablesObjects);
+	static QJsonArray searchPathForAuthority(const QString originBlock, const QString destiBlock, const QJsonArray* trackConstantsObjects);
   private:
+	static void setAuthorityFromPath(const QJsonArray* authorityPath, bool b, const QJsonArray* path, QJsonArray* trackVariablesObjects);
+	static QStringList getAuthorizedPath(const QString blockId, const QJsonArray* trackVariablesObjects);
 	static QList<QList<QString>> searchPaths (const QString originBlockId, const QString destBlockId, QSet<QString> pathSet
 							  , const QString& startingBlock1, const QString& startingBlock2, const QString& endingBlock1, const QString& endingBlock2
 							  , QJsonObject* targetedBlockMap,  QString allowedDirection);
@@ -341,6 +345,126 @@ inline QJsonArray T3CTCOffice::searchPathsFromMetaInfo(const QJsonArray dispatch
 			ret.append(QJsonArray::fromStringList(currretRaw));
 		}
 	return ret;
+}
+
+inline void T3CTCOffice::writeToPlcInputFromMetaInfo(const QString blockId, const QJsonArray *metaInfo, const QJsonArray* trackConstantsObjects, QJsonArray *trackVariablesObjects) {
+	//metaInfo [maintananceMode,suggestedSpeed,switchPosition,authorityTo]
+	if(metaInfo->size() != 4
+			|| !metaInfo->at(0).isBool()
+			|| !metaInfo->at(1).isDouble()
+			|| !metaInfo->at(2).isBool()
+			|| !metaInfo->at(3).isString())
+		qFatal("T3CTCOffice::writeToPlcInputFromMetaInfo() -> meta information incorrect.");
+
+	bool maintanceMode = metaInfo->at(0).toBool();
+	float suggestedSpeed = metaInfo->at(1).toDouble();
+	bool switchIsUp = metaInfo->at(2).toBool();
+	QString authorityTo = metaInfo->at(3).toString();
+	QJsonArray authorityPath;
+	//if current requested new authority is not empty, clear the authority for related blocks
+	if(authorityTo != "__" && !authorityTo.isEmpty()) {
+		authorityPath = searchPathForAuthority(blockId, authorityTo, trackConstantsObjects);
+		//after clearning the authorities, set the authorities,speed,etc  for all blocks included in this authority path
+		for(qsizetype i = 0; i < authorityPath.size(); ++i) {
+			//for each block included in this authority path, find all blocks authorized on this current block, and clear their authority
+			QJsonArray allBlocksAuthorizedFromCurrBlock = QJsonArray::fromStringList(getAuthorizedPath(authorityPath.at(i).toString(), trackVariablesObjects));
+			if(!allBlocksAuthorizedFromCurrBlock.isEmpty() && allBlocksAuthorizedFromCurrBlock.first().toString() != "")
+				setAuthorityFromPath(&allBlocksAuthorizedFromCurrBlock, false, nullptr, trackVariablesObjects);
+		}
+		setAuthorityFromPath(&authorityPath, true, &authorityPath, trackVariablesObjects);
+	}
+	//set authority, commanded speed, etc ONLY for current block
+	bool fieldIsFound = false;
+	for(qsizetype i = 0; i < trackVariablesObjects->size(); ++i) { //for every line
+		QJsonObject currTrackVarObj = trackVariablesObjects->at(i).toObject();
+		if(currTrackVarObj.find(blockId) != currTrackVarObj.end()) {
+			QJsonObject currBlockVarObj = currTrackVarObj[blockId].toObject();
+			QString currPlcInput = currBlockVarObj.value("plcInput").toString();
+			Q_ASSERT(currPlcInput.size() == 32);
+			currPlcInput[0] =  '1';//if sent always connected assumed
+			//authority is handled from previous step
+			uint8_t roundedSuggestedSpeed = static_cast<uint8_t>(suggestedSpeed);
+			currPlcInput[2] =  ((roundedSuggestedSpeed & (1 << 0)) != 0) ? '1' : '0';
+			currPlcInput[3] =  ((roundedSuggestedSpeed & (1 << 1)) != 0) ? '1' : '0';
+			currPlcInput[4] =  ((roundedSuggestedSpeed & (1 << 2)) != 0) ? '1' : '0';
+			currPlcInput[5] =  ((roundedSuggestedSpeed & (1 << 3)) != 0) ? '1' : '0';
+			currPlcInput[6] = ((roundedSuggestedSpeed & (1 << 4)) != 0) ? '1' : '0';
+			currPlcInput[7] = ((roundedSuggestedSpeed & (1 << 5)) != 0) ? '1' : '0';
+			currPlcInput[8] = ((roundedSuggestedSpeed & (1 << 6)) != 0) ? '1' : '0';
+			currPlcInput[9] =  ((roundedSuggestedSpeed & (1 << 7)) != 0) ? '1' : '0';
+			currPlcInput[10] =  switchIsUp ? '1' : '0';
+			currBlockVarObj["plcInput"] = currPlcInput;
+			currTrackVarObj[blockId] = currBlockVarObj;
+			trackVariablesObjects->operator[](i) = currTrackVarObj;
+			fieldIsFound = true;
+			break;
+		}
+	}
+	if(!fieldIsFound)
+		qFatal("CTCOffice::maskAuthorityBooleanToPlcInput() -> cannot find the block id insetTrackPropertyted");
+
+}
+
+inline QJsonArray T3CTCOffice::searchPathForAuthority(const QString originBlock, const QString destiBlock, const QJsonArray* trackConstantsObjects) {
+	QJsonArray metaInfoForPathFinding
+		= {"____", originBlock, destiBlock, "__:__"};
+	QJsonArray paths = searchPathsFromMetaInfo(metaInfoForPathFinding, trackConstantsObjects);
+	if(paths.size() == 0) return QJsonArray();
+	//which path is the shortest? use that one!
+	qsizetype currMinInd = 0;
+	for(qsizetype i = 0; i < paths.count(); ++i) {
+		qsizetype currLength = paths.at(i).toArray().count();
+		if(currLength > 0
+				&& paths.at(i).toArray().count() < paths.at(currMinInd).toArray().count())
+			currMinInd = i;
+	}
+	return paths.at(currMinInd).toArray();
+}
+
+inline void T3CTCOffice::setAuthorityFromPath(const QJsonArray *authorityPath, bool b, const QJsonArray* path, QJsonArray *trackVariablesObjects) {
+	QString pathAsString;
+	if(path == nullptr) Q_ASSERT(!b);
+	else {
+		for(qsizetype i = 0; i < authorityPath->size(); ++i) {
+			if(i > 0) pathAsString += "|";
+			pathAsString = pathAsString + authorityPath->at(i).toString();
+		}
+	}
+	for(qsizetype k = 0; k < authorityPath->size(); ++k) {
+		QString blockId = authorityPath->at(k).toString();
+		bool fieldIsFound = false;
+		for(qsizetype i = 0; i < trackVariablesObjects->size(); ++i) { //for every line
+			QJsonObject currTrackVarObj = trackVariablesObjects->at(i).toObject();
+			if(currTrackVarObj.find(blockId) != currTrackVarObj.end()) {
+				QJsonObject currBlockVarObj = currTrackVarObj[blockId].toObject();
+				QString currPlcInput = currBlockVarObj.value("plcInput").toString();
+				Q_ASSERT(currPlcInput.size() == 32);
+				currPlcInput[1] = b ? '1' : '0';
+				currBlockVarObj["plcInput"] = currPlcInput;
+				currBlockVarObj["authority"] = pathAsString;
+				currTrackVarObj[blockId] = currBlockVarObj;
+				trackVariablesObjects->operator[](i) = currTrackVarObj;
+				fieldIsFound = true;
+				break;
+			}
+		}
+		if(!fieldIsFound)
+			qFatal("T3CTCOffice::setAuthorityFromPath() -> cannot find the block id insetTrackPropertyted");
+	}
+}
+
+
+inline QStringList T3CTCOffice::getAuthorizedPath(const QString blockId, const QJsonArray *trackVariablesObjects) {
+	for(qsizetype i = 0; i < trackVariablesObjects->size(); ++i) { //for every line
+		QJsonObject currTrackVarObj = trackVariablesObjects->at(i).toObject();
+		if(currTrackVarObj.find(blockId) != currTrackVarObj.end()) {
+			QJsonObject currBlockVarObj = currTrackVarObj[blockId].toObject();
+			return currBlockVarObj.value("authority").toString().split("|");
+			break;
+		}
+	}
+	qFatal("T3CTCOffice::getAuthorizedPath() -> cannot find the block id insetTrackPropertyted");
+	return QStringList();
 }
 
 #endif // T3CTCOFFICE_HPP

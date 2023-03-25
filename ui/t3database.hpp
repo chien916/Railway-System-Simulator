@@ -5,6 +5,8 @@
 #include <QtQml>
 #include "t3trainmodel.hpp"
 #include "t3trackmodel.hpp"
+#include "t3trackcontroller.hpp"
+#include "t3traincontroller.hpp"
 #include "t3ctcoffice.hpp"
 //#include "t3trackmodel.hpp"
 
@@ -56,6 +58,7 @@ class T3Database: public QObject {
 	};
 	Q_ENUM(DatabaseTitle);
   private:
+
 	bool firebaseEnabled = true;
 	QString firebaseRootUrlString = "https://sprn2023-ece1140-default-rtdb.firebaseio.com/";
 	QNetworkAccessManager networkAccessManager;
@@ -71,6 +74,7 @@ class T3Database: public QObject {
 	Q_INVOKABLE void db_toggleFirebase(bool enable);
 	Q_INVOKABLE void db_pushToFirebase(uint8_t selector = 0b11111111);
 	Q_INVOKABLE void db_pullFromFirebase(uint8_t selector = 0b11111111);
+
   private:
 
 	//====================================================
@@ -88,6 +92,8 @@ class T3Database: public QObject {
 	Q_INVOKABLE QJsonArray ctc_getPossiblePathsFromCsv(const QString filePath, const QJsonArray dispatchMetaInfo);
 	Q_INVOKABLE void ctc_enqueueDispatchRequest(const QJsonArray dispatchMetaInfo, const QJsonArray path);
 	Q_INVOKABLE void ctc_discardDispatchRequest(const int index);
+	Q_INVOKABLE void ctc_writeToPlcInputFromMetaInfo(const QString blockId, const QJsonArray metaInfo);
+	Q_INVOKABLE QJsonArray ctc_searchPathForAuthority(const QString originBlock, const QString destiBlock);
   signals:
 	void onDispatchQueueChanged();
 	void onStationToBlockIdMapChanged();
@@ -100,8 +106,15 @@ class T3Database: public QObject {
   public:
 	Q_INVOKABLE void kc_grantAuthority(const QJsonArray path);
 	Q_INVOKABLE void kc_revokeAuthority(const QString blockId);
+	Q_INVOKABLE QJsonArray kc_collectPlcInput(const QString blockId);
+	Q_INVOKABLE void kc_addPlcScriptFromCsv(const QString filePath);
+	Q_INVOKABLE QJsonArray kc_generatePlcOutput(QJsonArray plcInput);
+	Q_INVOKABLE void kc_writePlcOutput(const QString blockId, QJsonArray plcOutput);
+
   signals:
   private:
+	QJSEngine plcRuntime;
+	QJSValue plcFunction;
 	void kc_iterate();
 	//====================================================
 	//=====================TRACK-MODEL====================
@@ -167,6 +180,8 @@ class T3Database: public QObject {
 			   , std::make_pair(T3TrackModel::TrackProperty::Heaters, QPair<QString, int>(QString("heaters"), qMetaTypeId<QString>()))
 			   , std::make_pair(T3TrackModel::TrackProperty::PeopleOnStation, QPair<QString, int>(QString("peopleOnStation"), qMetaTypeId<uint16_t>()))
 			   , std::make_pair(T3TrackModel::TrackProperty::MaintainanceMode, QPair<QString, int>(QString("maintainanceMode"), qMetaTypeId<bool>()))
+			   , std::make_pair(T3TrackModel::TrackProperty::PlcInput, QPair<QString, int>(QString("plcInput"), qMetaTypeId<QString>()))
+			   , std::make_pair(T3TrackModel::TrackProperty::PlcOutput, QPair<QString, int>(QString("plcOutput"), qMetaTypeId<QString>()))
 			  };
 
 	const QHash<T3TrainModel::TrainProperty, QPair<QString, int>> trainPropertiesMetaDataMap
@@ -291,6 +306,17 @@ inline void T3Database::ctc_discardDispatchRequest(const int index) {
 	db_pushToFirebase(DispatchQueue);
 }
 
+
+inline void T3Database::ctc_writeToPlcInputFromMetaInfo(const QString blockId, const QJsonArray metaInfo) {
+	T3CTCOffice::writeToPlcInputFromMetaInfo(blockId, &metaInfo, &trackConstantsObjects, &trackVariablesObjects);
+	Q_EMIT onTrackVariablesObjectsChanged();
+	db_pushToFirebase(TrackVariablesObjects);
+}
+
+inline QJsonArray T3Database::ctc_searchPathForAuthority(const QString originBlock, const QString destiBlock) {
+	return T3CTCOffice::searchPathForAuthority(originBlock, destiBlock, &trackConstantsObjects);
+}
+
 /**
  * @brief T3Database::ctc_iterate
  * 检查当前时间，并且判断发车队列中有没有需要发车的（当前时间大于计划时间)
@@ -334,6 +360,24 @@ inline void T3Database::kc_grantAuthority(const QJsonArray path) {
 
 inline void T3Database::kc_revokeAuthority(const QString blockId) {
 	km_revokeAuthority(blockId);
+}
+
+inline QJsonArray T3Database::kc_collectPlcInput(const QString blockId) {
+	return T3TrackController::collectPlcInput(blockId, &trackVariablesObjects);
+}
+
+inline void T3Database::kc_addPlcScriptFromCsv(const QString filePath) {
+	T3TrackController::addPlcScriptFromCsv(filePath, &plcRuntime, &plcFunction);
+}
+
+inline QJsonArray T3Database::kc_generatePlcOutput(QJsonArray plcInput) {
+	return T3TrackController::generatePlcOutput(plcInput, &plcRuntime, &plcFunction);
+}
+
+inline void T3Database::kc_writePlcOutput(const QString blockId, QJsonArray plcOutput) {
+	T3TrackController::writePlcOutput(blockId, &plcOutput, &trackVariablesObjects);
+	Q_EMIT onTrackVariablesObjectsChanged();
+	db_pushToFirebase(TrackVariablesObjects);
 }
 
 

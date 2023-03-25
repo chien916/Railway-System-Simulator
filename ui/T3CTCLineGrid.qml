@@ -171,7 +171,7 @@ Item {
 							blockConstantsObject_O:trackConstantsObject_O["blocksMap"][blockId_s]
 							blockVariablesObject_O: trackVariablesObject_O[blockId_s]
 							hovered_b: mAre_railBlock.containsMouse
-							hovered2_b: currIndOfPathsAvailable_n===-1?false:pathsAvailable_sA[currIndOfPathsAvailable_n]===blockId_s
+							hovered2_b: (currIndOfPathsAvailable_n===-1||!pathsAvailable_sA)?false:pathsAvailable_sA[currIndOfPathsAvailable_n]===blockId_s
 							noAnimation_b: hovered2_b
 							pressed_b: mAre_railBlock.containsPress
 						}

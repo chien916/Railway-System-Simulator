@@ -1,16 +1,16 @@
 import QtQuick 2.12
 
 Item {
+	id:root
 	signal applyClicked();
-	property string blockId_s:"B_A_2"
-	onBlockId_sChanged: {db2view()}
-	property int dbIndex_n:-1
+	property string blockId_s:"B_A_5"
+	property string switchSide_s : ""
+	onBlockId_sChanged: {db2view(true)}
 	readonly property variant configModel_nA:[
 		//[textonly,twostate,labal,unit]
 		"F_T_Maintance Mode_"
-		,"F_T_Authority_"
 		,"F_F_Suggested Speed_mph"
-		,"F_T_Switch Position_"
+
 	]
 	Rectangle{
 		id:rect_canvas
@@ -29,7 +29,14 @@ Item {
 //		}
 		Column{
 			id:col_column
-			anchors.fill: parent
+			anchors{
+				top:parent.top
+				left:parent.left
+				right:parent.right
+				bottom:parent.bottom
+			}
+			clip:true
+			height: parent.height*0.3
 			anchors{
 				topMargin: T3Styling.margin_r
 				leftMargin: T3Styling.margin_r
@@ -38,21 +45,155 @@ Item {
 			}
 //			clip: true
 			spacing: T3Styling.spacing_r
-			Repeater{
-				id:reap_repeater
-				model:configModel_nA
-				delegate:		T3ParamUnit{
-					height:(rect_canvas.height-T3Styling.margin_r*4
-							-col_column.spacing*(configModel_nA.length-1))/configModel_nA.length
-					maxValue_r: index===2?100:1
-					minValue_r: 0
-					fixedPoint_i: 2
-					readOnly_b: index===0?false:reap_repeater.itemAt(0).actualValue_r<0.5
-					paramConfig_A:modelData
-					width: col_column.width
+			T3ParamUnit{
+				id:custom_maintainanceMode
+				height:T3Styling.fontMain_r*1
+				maxValue_r: 1;
+				minValue_r: 0
+				fixedPoint_i: 2
+				readOnly_b:false
+				paramConfig_A:"F_T_Maintance Mode_"
+				width: col_column.width
+				onValueratio_rChanged: {
+					if(valueratio_r===0) root.db2view(false);
+				}
+			}
+			T3ParamUnit{
+				id:cust_suggestedSpeed
+				opacity:custom_maintainanceMode.valueratio_r>0.5?1:0.5
+				Behavior on opacity{PropertyAnimation{easing.type: Easing.OutCirc}}
+				height:T3Styling.fontMain_r*1
+				maxValue_r: 100;
+				minValue_r: 0
+				fixedPoint_i: 2
+				readOnly_b: !custom_maintainanceMode.valueratio_r>0.5
+				paramConfig_A:"F_F_Suggested Speed_mph"
+				width: col_column.width
+			}
+			Item{
+				width: parent.width
+				height: T3Styling.spacing_r
+			}
+			Item{
+				width: col_column.width
+				height: T3Styling.fontSubSub_r
+				T3Text{
+					textContent_s: " Switch Position"
+					opacity: custom_maintainanceMode.valueratio_r>0.5?1:0.5
+					Behavior on opacity{PropertyAnimation{easing.type: Easing.OutCirc}}
+					anchors.fill: parent
+					textColor_c: T3Styling.cFgSub_c
+					textPixelSize_r: T3Styling.fontSubSub_r
+					textBold_b: true
+					textAlign_s: "left"
+				}
+				T3Text{
+					textContent_s:{
+						if(switchSide_s==="") return "N/A"
+						else if(cust_switchDial.currValue_n===0) return "BOTTOM"
+						else if(cust_switchDial.currValue_n===0.36) return "TOP"
+						else if(cust_switchDial.currValue_n===0.64) return "TOP"
+						else if(cust_switchDial.currValue_n===1) return "BOTTOM"
+					}
+					opacity:custom_maintainanceMode.valueratio_r>0.5?1:0.5
+					Behavior on opacity{PropertyAnimation{easing.type: Easing.OutCirc}}
+					anchors.fill: parent
+					textColor_c: T3Styling.cFgMain_c
+					textPixelSize_r: T3Styling.fontSubSub_r
+					textBold_b: true
+					textAlign_s: "right"
+				}
+
+			}
+
+			T3NCDial{
+				id:cust_switchDial
+				height: T3Styling.fontSubSub_r*12
+				anchors.horizontalCenter: parent.horizontalCenter
+				ticks_nA:{
+					if(switchSide_s==="left")return [0,0.36]
+					else if(switchSide_s==="right")return [0.64,1]
+					else return [];
+				}
+				enabled_b:custom_maintainanceMode.valueratio_r>0.5
+			}
+			Item{
+				width: parent.width
+				height: T3Styling.spacing_r*1.5
+			}
+
+			Item{
+				width: col_column.width
+				height: T3Styling.fontSubSub_r
+				T3Text{
+					textContent_s: " Authority"
+					opacity: custom_maintainanceMode.valueratio_r>0.5?1:0.5
+					Behavior on opacity{PropertyAnimation{easing.type: Easing.OutCirc}}
+					anchors.fill: parent
+					textColor_c: T3Styling.cFgSub_c
+					textPixelSize_r: T3Styling.fontSubSub_r
+					textBold_b: true
+					textAlign_s: "left"
+				}
+				T3Text{
+					textContent_s:{
+						if(tInp_dispatchFrom.text==="  ") return "N/A"
+						else tInp_dispatchFrom.text
+					}
+					opacity:custom_maintainanceMode.valueratio_r>0.5?1:0.5
+					Behavior on opacity{PropertyAnimation{easing.type: Easing.OutCirc}}
+					anchors.fill: parent
+					textColor_c: T3Styling.cFgMain_c
+					textPixelSize_r: T3Styling.fontSubSub_r
+					textBold_b: true
+					textAlign_s: "right"
+				}
+
+			}
+
+			Rectangle{
+				id:rect_dispatchFrom
+				height: T3Styling.fontSubSub_r*2
+				width: parent.width
+				radius: T3Styling.margin_r
+				opacity:custom_maintainanceMode.valueratio_r>0.5?1:0.5
+				Behavior on opacity{PropertyAnimation{easing.type: Easing.OutCirc}}
+				color: (custom_maintainanceMode.valueratio_r>0.5)?T3Styling.cBgMain_c:T3Styling.cFgSubSub_c
+				Behavior on color{PropertyAnimation{}}
+				T3Text{
+					id:text_dispatchFromHint
+					anchors{
+						fill:parent
+					}
+					textPixelSize_r: T3Styling.fontSubSub_r
+					textContent_s: "NO AUTHORITY GIVEN"
+					visible: tInp_dispatchFrom.text==="  "
+					textColor_c: T3Styling.cFgMain_c
+				}
+				TextInput{
+					id:tInp_dispatchFrom
+					readOnly:!custom_maintainanceMode.valueratio_r>0.5
+					anchors{
+						fill:parent
+					}
+					cursorDelegate: Item{}
+					width: T3Styling.fontSubSub_r*6
+					font.bold: acceptableInput
+					color: acceptableInput?T3Styling.cFgMain_c:text==="  "?T3Styling.cFgMain_c:T3Styling.cYellow_c
+					verticalAlignment: Text.AlignVCenter
+					horizontalAlignment: Text.AlignHCenter
+					inputMask: ">A A 900"
+					text:""
+					font.family: "Inter"
+					font.pixelSize: T3Styling.fontSubSub_r
+					onFocusChanged: {
+						if(focus||!acceptableInput) selectAll()
+					}
 				}
 			}
 		}
+
+
 		T3Button{
 			anchors{
 				bottom:rect_canvas.bottom
@@ -64,8 +205,25 @@ Item {
 			width: (rect_canvas.width-T3Styling.margin_r*3)/2
 			buttonLabel_s: "APPLY"
 			onButtonClicked: {
-				view2db();
-				applyClicked();
+				//console.log(tInp_dispatchFrom.text)
+				if(tInp_dispatchFrom.text==="  "){
+					view2db();
+					applyClicked();
+					return;
+				}
+				let dispatchFrom_s = tInp_dispatchFrom.text.split(" ").join("_");
+				for(let i = 0;i<t3databaseQml.trackConstantsObjects_QML.length;++i){
+					if(t3databaseQml.trackConstantsObjects_QML[i]["blocksMap"][dispatchFrom_s]!==undefined){
+						if(dispatchFrom_s.charAt(0)!==root.blockId_s.charAt(0)){
+							rect_errMessage.showMessage("Block on Different Line");
+							return;
+						}
+						view2db();
+						applyClicked();
+						return;
+					}
+				}
+				rect_errMessage.showMessage("Unrecognized Block");
 			}
 		}
 
@@ -81,6 +239,56 @@ Item {
 			buttonLabel_s: "CANCEL"
 			onButtonClicked: applyClicked()
 		}
+
+		Rectangle{
+			anchors{
+				bottom:parent.bottom
+				left:parent.left
+				right:parent.right
+				margins: T3Styling.margin_r
+			}
+			height: T3Styling.margin_r
+			id:rect_errMessage
+			radius: T3Styling.margin_r
+			color: Qt.darker(T3Styling.cRed_c)
+			opacity:0
+			SequentialAnimation{
+				id:anim_showAndDisappear
+				alwaysRunToEnd: true
+				PropertyAnimation{
+					target:rect_errMessage
+					property:"opacity"
+					from:0.0
+					to:1.0
+					duration: 500
+				}
+				PropertyAnimation{
+					target:rect_errMessage
+					property:"opacity"
+					from:1.0
+					to:1.0
+					duration: 1000
+				}
+				PropertyAnimation{
+					target:rect_errMessage
+					property:"opacity"
+					from:1.0
+					to:0.0
+					duration: 500
+				}
+			}
+			T3Text{
+				id:text_errMessage
+				anchors.fill: parent
+				textContent_s: "ERR MESSAGE"
+				textColor_c: T3Styling.cFgMain_c
+				textPixelSize_r: T3Styling.fontSubSub_r
+			}
+			function showMessage(errMsg:string){
+				text_errMessage.textContent_s = errMsg;
+				anim_showAndDisappear.start()
+			}
+		}
 	}
 
 //	Timer{
@@ -92,29 +300,77 @@ Item {
 //		}
 //	}
 
-	function db2view(){
-		if(!t3databaseQml.trackVariablesObjects_QML||dbIndex_n===-1) return;
+	function db2view(maintanceModeIncluded_b:bool){
+		if(!t3databaseQml.trackVariablesObjects_QML) return;
 		//console.log(t3databaseQml.km_getTrackProperty(blockId_s,0))
-		reap_repeater.itemAt(0).valueratio_r = t3databaseQml.km_getTrackProperty(blockId_s,10)?1.0:0.0
-		reap_repeater.itemAt(1).valueratio_r = t3databaseQml.km_getTrackProperty(blockId_s,1)?1.0:0.0
-		reap_repeater.itemAt(2).valueratio_r
-				= t3databaseQml.km_getTrackProperty(blockId_s,0)/100
-		reap_repeater.itemAt(3).valueratio_r = t3databaseQml.km_getTrackProperty(blockId_s,2)?1.0:0.0
+		//handles authority
+		let authority_s = t3databaseQml.km_getTrackProperty(blockId_s,1);
+		if(!authority_s||authority_s.length===0) tInp_dispatchFrom.text = "";
+		else{
+			let splittedPath_sA = authority_s.split("|");
+			tInp_dispatchFrom.text = splittedPath_sA[splittedPath_sA.length-1].split("_").join(" ");
+		}
+		//handles maintanaceMode
+		if(maintanceModeIncluded_b){
+			let mainanceMode_b = t3databaseQml.km_getTrackProperty(blockId_s,10);
+			custom_maintainanceMode.valueratio_r = mainanceMode_b?1:0;
+		}
+		//handles suggested speed
+		let suggestedSpeed_r = t3databaseQml.km_getTrackProperty(blockId_s,0);
+		cust_suggestedSpeed.valueratio_r = suggestedSpeed_r/100;
+		//handles switch position
+		let switchIsUp_b = t3databaseQml.km_getTrackProperty(blockId_s,2);
+		for(let i = 0;i<t3databaseQml.trackConstantsObjects_QML.length;++i){
+			if(t3databaseQml.trackConstantsObjects_QML[i]["blocksMap"][root.blockId_s]!==undefined){
+				let currBlockConstantObject = t3databaseQml.trackConstantsObjects_QML[i]["blocksMap"][root.blockId_s];
+				let prevBlock2_s = currBlockConstantObject["prevBlock2"];
+				let nextBlock2_s= currBlockConstantObject["nextBlock2"];
+				if(prevBlock2_s!==""&&prevBlock2_s!=="PASSIVE"){
+					root.switchSide_s = "left"
+					cust_switchDial.dialDialValue_r = switchIsUp_b?0.36:0;
+				}
+				else if(nextBlock2_s!==""&&nextBlock2_s!=="PASSIVE"){
+					root.switchSide_s = "right"
+					cust_switchDial.dialDialValue_r = switchIsUp_b?0.64:1;
+				}else{
+					root.switchSide_s = ""
+				}
+			}
+		}
 	}
 
 	function view2db(){
-		if(!t3databaseQml.trackVariablesObjects_QML||dbIndex_n===-1) return;
-		t3databaseQml.km_setTrackProperty(blockId_s,10,reap_repeater.itemAt(0).actualValue_r>0.5);
-		t3databaseQml.km_setTrackProperty(blockId_s,1,reap_repeater.itemAt(1).actualValue_r>0.5);
-		t3databaseQml.km_setTrackProperty(blockId_s,0,reap_repeater.itemAt(2).actualValue_r);
-		t3databaseQml.km_setTrackProperty(blockId_s,2,reap_repeater.itemAt(3).actualValue_r>0.5);
+		if(!t3databaseQml.trackVariablesObjects_QML) return;
+		//handles authority
+		//add new authorities
+		if(tInp_dispatchFrom.text==="  ")
+			t3databaseQml.kc_revokeAuthority(blockId_s)
+		else{
+			let paths_A = t3databaseQml.ctc_getPossiblePathsFromMetaInfo(["____",blockId_s,tInp_dispatchFrom.text.split(" ").join("_"),"__:__"]);
+			if(paths_A.length===0){
+				rect_errMessage.showMessage("No Path Found");
+				return;
+			}
+			paths_A.sort((a_A,b_A)=>a_A.length-b_A.length);
+			t3databaseQml.kc_grantAuthority(paths_A[0]);
+		}
+		//handles maintanaceMode
+		t3databaseQml.km_setTrackProperty(blockId_s,10,custom_maintainanceMode.valueratio_r>0.5);
+		//handles suggested speed
+		t3databaseQml.km_setTrackProperty(blockId_s,0,cust_suggestedSpeed.actualValue_r);
+		//handles switch position
+		if(switchSide_s==="left")
+			t3databaseQml.km_setTrackProperty(blockId_s,2,cust_switchDial.currValue_n===0.36);
+		else if(switchSide_s==="right")
+			t3databaseQml.km_setTrackProperty(blockId_s,2,cust_switchDial.currValue_n===0.64);
+		//console.log(custom_maintainanceMode.valueratio_r>0.5)
 	}
 
 	//for testing only
 	Component.onCompleted: {
-		db2view();
+		db2view(true);
 	}
 
-	implicitWidth: 250
-	implicitHeight: 500
+	implicitWidth: 350
+	implicitHeight: 450
 }

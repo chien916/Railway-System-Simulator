@@ -5,7 +5,10 @@ Item {
 	implicitHeight: 200
 	implicitWidth: 200
 	property variant ticks_nA: [0.64,0.82,1]
+	property bool enabled_b:true
+	property alias dialDialValue_r:dial_dial.value
 	property real currValue_n :{
+		if(ticks_nA.length===0) return 0 ;
 		//		return 0;
 		let ticksCopy_nA = [...ticks_nA];
 		ticksCopy_nA.sort((a_n,b_n)=>{
@@ -22,7 +25,7 @@ Item {
 		id:dial_dial
 		width: root.width
 		height: root.height
-		enabled: true
+		enabled: ticks_nA.length>0&&enabled_b
 		anchors.horizontalCenter: parent.horizontalCenter
 		anchors.verticalCenter: parent.verticalCenter
 		stepSize:0.5
@@ -59,10 +62,11 @@ Item {
 		x:rect_center.x+rect_center.width/2
 		y:rect_center.y+rect_center.height/2-height/2
 		color: dial_dial.enabled?T3Styling.cFgSub_c:T3Styling.cFgSubSub_c
+		Behavior on color{PropertyAnimation{easing.type: Easing.OutCirc}}
 		height: dial_dial.width*0.15
 		width: dial_dial.width*0.475
 		radius: height
-//		opacity: 0.4
+		opacity: root.ticks_nA.length>0?1:0
 		transform: Rotation{
 			origin.y:rect_throttleBar.height/2
 			angle:130+280*currValue_n
@@ -76,7 +80,7 @@ Item {
 			verticalCenter: dial_dial.verticalCenter
 		}
 		color: dial_dial.enabled?T3Styling.cFgMain_c:T3Styling.cFgSub_c
-		Behavior on color{PropertyAnimation{}}
+		Behavior on color{PropertyAnimation{easing.type: Easing.OutCirc}}
 		width: dial_dial.width*0.25
 		height:dial_dial.height*0.25
 		radius: width
@@ -88,6 +92,7 @@ Item {
 	//			anchors.horizontalCenter: parent.horizontalCenter
 			textColor_c: T3Styling.cFgSubSub_c
 			textPixelSize_r: T3Styling.fontSub_r
+			opacity:root.ticks_nA.length>0?1:0
 			transform: Rotation{
 				origin.x:text_rotation.width/2
 				origin.y:text_rotation.height/2

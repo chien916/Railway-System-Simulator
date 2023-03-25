@@ -126,13 +126,14 @@ Item {
 					onBlockClicked: {
 						//block identifier
 						if(!menuMode_b&&!configMode_b){
-							cBloc_configBlock.dbIndex_n = index;
+							//cBloc_configBlock.dbIndex_n = index;
 							cBloc_configBlock.blockId_s = blockId_s
 
 							rBlo_railBlockSelected.blockConstantsObject_O
 									= t3databaseQml.trackConstantsObjects_QML[index]["blocksMap"][blockId_s]
 							rBlo_railBlockSelected.blockVariablesObject_O
 									= t3databaseQml.trackVariablesObjects_QML[index][blockId_s]
+							rBlo_railBlockSelected.blockId_s = blockId_s;
 							configMode_b = true;
 						}
 
@@ -163,7 +164,7 @@ Item {
 			x:configMode_b?root.width*1/3-width/2:-width*5
 			Behavior on x{ PropertyAnimation {easing.type: Easing.InOutCirc }}
 			y:colu_column.y+colu_column.height/2-height/2
-			height: colu_column.height*5/6
+			height: 450
 			width: root.width*0.3
 			color:T3Styling.cBgSub_c
 			radius: T3Styling.margin_r
@@ -174,6 +175,9 @@ Item {
 				noAnimation_b: true
 				anchors.margins: T3Styling.margin_r
 				anchors.fill: parent
+				onTrainMoveForward_bChanged: {
+					console.log(trainInfo_s)
+				}
 			}
 		}
 

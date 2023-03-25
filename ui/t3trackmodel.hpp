@@ -26,10 +26,14 @@ class T3TrackModel {
 	static void plcIterate(QVarLengthArray<QPair<const QJsonObject*, QJsonObject*>, 5>& quintupleBlocks);
 	static void addTrackFromCsv(const QString filePath, QJsonArray* trackConstantsObjects, QJsonArray*trackVariablesObjects, QJsonObject* stationToIdMapObject);
 	static QString determineMovingDirection(const QString currBlockId, const QString nextOrPrevBlockId, const QJsonArray* trackConstantsObjects);
-	static void setTrackProperty(QString blockId, T3TrackModel::TrackProperty trackProperty, QVariant value, QJsonArray*trackVariablesObjects
+	static void setTrackProperty(QString blockId, T3TrackModel::TrackProperty trackProperty, QVariant value,  QJsonArray*trackVariablesObjects
 								 , const QHash<T3TrackModel::TrackProperty, QPair<QString, int>>*const trackPropertiesMetaDataMap);
 	static QVariant getTrackProperty(QString blockId, T3TrackModel::TrackProperty trackProperty, const QJsonArray *trackVariablesObjects
 									 , const QHash<T3TrackModel::TrackProperty, QPair<QString, int>>*const trackPropertiesMetaDataMap);
+	static void grantAuthority(QString blockId, const QJsonArray* path,  QJsonArray *trackVariablesObjects
+							   , const QHash<T3TrackModel::TrackProperty, QPair<QString, int>>*const trackPropertiesMetaDataMap);
+	static void revokeAuthority(QString blockId,  QJsonArray *trackVariablesObjects
+								, const QHash<T3TrackModel::TrackProperty, QPair<QString, int>>*const trackPropertiesMetaDataMap);
 
   private:
 	//static const QHash<T3TrackModel::TrackProperty, QPair<QString, int>> trackPropertiesMetaDataMap;
@@ -137,7 +141,7 @@ inline void T3TrackModel::addTrackFromCsv(const QString filePath, QJsonArray* tr
 		{
 			QJsonObject currBlockVarObj;
 			currBlockVarObj.insert("commandedSpeed", static_cast<uint16_t>(0));
-			currBlockVarObj.insert("authority", true);
+			currBlockVarObj.insert("authority", QString());
 			currBlockVarObj.insert("switchPosition", false);
 			if(currLineSplitted.at(12).contains("BIDIRECTIONAL")
 					|| currLineSplitted.at(12).contains("FORWARD"))
@@ -216,7 +220,7 @@ inline QString T3TrackModel::determineMovingDirection(const QString currBlockId,
 	return "";
 }
 
-inline void T3TrackModel::setTrackProperty(QString blockId, TrackProperty trackProperty, QVariant value, QJsonArray *trackVariablesObjects
+inline void T3TrackModel::setTrackProperty(QString blockId, TrackProperty trackProperty, QVariant value,  QJsonArray *trackVariablesObjects
 		, const QHash<T3TrackModel::TrackProperty, QPair<QString, int>>*const trackPropertiesMetaDataMap) {
 	QPair<QString, int> metaData = trackPropertiesMetaDataMap->value(trackProperty);
 	if(!value.canConvert(metaData.second))
@@ -246,6 +250,7 @@ inline QVariant T3TrackModel::getTrackProperty(QString blockId, TrackProperty tr
 		if(currTrackVarObj.find(blockId) != currTrackVarObj.end()) {
 			QJsonObject currBlockVarObj = currTrackVarObj[blockId].toObject();
 			QVariant valueRequested = currBlockVarObj[metaData.first].toVariant();
+
 			if(valueRequested.convert(metaData.second)) {
 				//qInfo() << "T3Database::getTrackProperty() -> " << valueRequested;
 				return valueRequested;
@@ -255,6 +260,28 @@ inline QVariant T3TrackModel::getTrackProperty(QString blockId, TrackProperty tr
 	}
 	qFatal("T3Database::getTrackProperty() -> cannot find the block id insetTrackPropertyted");
 	return QVariant();//should not reach this step..
+}
+
+inline void T3TrackModel::grantAuthority(QString blockId, const QJsonArray* path,  QJsonArray *trackVariablesObjects
+		, const QHash<TrackProperty, QPair<QString, int> > * const trackPropertiesMetaDataMap) {
+	//delete authorities of the current block
+	revokeAuthority(blockId, trackVariablesObjects, trackPropertiesMetaDataMap);
+	//set new authorties of the current block
+	QStringList blockIdsOfPath;
+	for(qsizetype i = 0; i < path->count(); ++i) {
+		blockIdsOfPath.push_back(path->at(i).toString());
+	}
+	setTrackProperty(blockId, TrackProperty::Authority, blockIdsOfPath.join("|"), trackVariablesObjects, trackPropertiesMetaDataMap);
+}
+
+inline void T3TrackModel::revokeAuthority(QString blockId,  QJsonArray *trackVariablesObjects, const QHash<TrackProperty, QPair<QString, int> > * const trackPropertiesMetaDataMap) {
+	QString blockIdsOfAuthoritiesRaw = getTrackProperty(blockId, TrackProperty::Authority, trackVariablesObjects, trackPropertiesMetaDataMap).toString();
+	if(blockIdsOfAuthoritiesRaw.contains("|")) {
+		QStringList authoritiesOnCurrBlock = blockIdsOfAuthoritiesRaw.split("|");
+		for(QString& authorityBlock : authoritiesOnCurrBlock) {
+			setTrackProperty(authorityBlock, TrackProperty::Authority, QString(), trackVariablesObjects, trackPropertiesMetaDataMap);
+		}
+	}
 }
 
 inline void T3TrackModel::trackIterate(QJsonArray *trackVariablesObjects, const QJsonArray* trackConstantsObjects) {

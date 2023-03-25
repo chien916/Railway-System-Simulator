@@ -94,6 +94,16 @@ class T3Database: public QObject {
   private:
 	void ctc_iterate();
 	//====================================================
+	//==================TRACK-CONTROLLER==================
+	//=====================铁路铁轨控制=====================
+	//====================================================
+  public:
+	Q_INVOKABLE void kc_grantAuthority(const QJsonArray path);
+	Q_INVOKABLE void kc_revokeAuthority(const QString blockId);
+  signals:
+  private:
+	void kc_iterate();
+	//====================================================
 	//=====================TRACK-MODEL====================
 	//=====================铁路铁轨模型=====================
 	//====================================================
@@ -104,6 +114,8 @@ class T3Database: public QObject {
 	QJsonArray trackVariablesObjects;//do not modify directly after initialization. use the setTrackProperty() slot instead!
 	Q_PROPERTY(QJsonArray trackVariablesObjects_QML MEMBER trackVariablesObjects NOTIFY onTrackVariablesObjectsChanged)
 
+	Q_INVOKABLE void km_grantAuthority(QString blockId, QJsonArray path);
+	Q_INVOKABLE void km_revokeAuthority(const QString blockId);
 	Q_INVOKABLE void km_addTrackFromCsv(const QString filePath);
 	Q_INVOKABLE void km_setTrackProperty(QString blockId, int trackProperty, QVariant value);
 	Q_INVOKABLE QVariant km_getTrackProperty(QString blockId, int trackProperty);
@@ -113,14 +125,7 @@ class T3Database: public QObject {
 	void onTrackVariablesObjectsChanged();
   private:
 	void km_iterate();
-	//====================================================
-	//==================TRACK-CONTROLLER==================
-	//=====================铁路铁轨控制=====================
-	//====================================================
-  public:
-  signals:
-  private:
-	void kc_iterate();
+
 	//====================================================
 	//=====================TRAIN-MODEL====================
 	//=====================铁道火车模型=====================
@@ -128,6 +133,7 @@ class T3Database: public QObject {
   public:
 	QJsonArray trainObjects;//do not modify directly after initialization. use the setTrainProperty() slot instead!
 	Q_PROPERTY(QJsonArray trainObjects_QML MEMBER trainObjects NOTIFY onTrainObjectsChanged)
+
 
 	Q_INVOKABLE void nm_setTrainProperty(QString trainId, int trainProperty, QVariant value);
 	Q_INVOKABLE QVariant nm_getTrainProperty(QString trainId, int trainProperty);
@@ -151,7 +157,7 @@ class T3Database: public QObject {
   private:
 	const QHash<T3TrackModel::TrackProperty, QPair<QString, int>> trackPropertiesMetaDataMap
 			= {std::make_pair(T3TrackModel::TrackProperty::CommandedSpeed, QPair<QString, int>(QString("commandedSpeed"), qMetaTypeId<float>()))
-			   , std::make_pair(T3TrackModel::TrackProperty::Authority, QPair<QString, int>(QString("authority"), qMetaTypeId<bool>()))
+			   , std::make_pair(T3TrackModel::TrackProperty::Authority, QPair<QString, int>(QString("authority"), qMetaTypeId<QString>()))
 			   , std::make_pair(T3TrackModel::TrackProperty::SwitchPostion, QPair<QString, int>(QString("switchPosition"), qMetaTypeId<bool>()))
 			   , std::make_pair(T3TrackModel::TrackProperty::ForwardLight, QPair<QString, int>(QString("forwardLight"), qMetaTypeId<QString>()))
 			   , std::make_pair(T3TrackModel::TrackProperty::ReversedLight, QPair<QString, int>(QString("backwardLight"), qMetaTypeId<QString>()))
@@ -313,10 +319,23 @@ inline void T3Database::ctc_iterate() {
 	Q_EMIT onDispatchQueueChanged();
 	db_pushToFirebase(TrackVariablesObjects | TrainObjects | DispatchQueue);
 }
+
 //====================================================
 //==================TRACK-CONTROLLER==================
 //=====================铁路铁轨控制=====================
 //====================================================
+
+inline void T3Database::kc_grantAuthority(const QJsonArray path) {
+	for(qsizetype i = 0; i < path.count(); ++i) {
+		km_grantAuthority(path.at(i).toString(), path);
+	}
+	//no need to handle notify signal here
+}
+
+inline void T3Database::kc_revokeAuthority(const QString blockId) {
+	km_revokeAuthority(blockId);
+}
+
 
 inline void T3Database::kc_iterate() {
 
@@ -351,9 +370,22 @@ inline void T3Database::km_addTrackFromCsv(const QString filePath) {
 	db_pushToFirebase(TrackConstantsObjects | TrackVariablesObjects);
 }
 
+inline void T3Database::km_grantAuthority(QString blockId, QJsonArray path) {
+	T3TrackModel::grantAuthority(blockId, &path, &trackVariablesObjects, &trackPropertiesMetaDataMap);
+	Q_EMIT onTrackVariablesObjectsChanged();
+	db_pushToFirebase(TrackVariablesObjects);
+}
+
+inline void T3Database::km_revokeAuthority(const QString blockId) {
+	T3TrackModel::revokeAuthority(blockId, &trackVariablesObjects, &trackPropertiesMetaDataMap);
+	Q_EMIT onTrackVariablesObjectsChanged();
+	db_pushToFirebase(TrackVariablesObjects);
+}
+
 inline void T3Database::km_iterate() {
 
 }
+
 
 
 //====================================================

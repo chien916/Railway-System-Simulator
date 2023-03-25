@@ -5,7 +5,8 @@ Item {
 	property variant blockConstantsObject_O:null
 	property variant blockVariablesObject_O:null
 	property bool noAnimation_b:false
-	readonly property bool ready_b : blockConstantsObject_O!==null
+	readonly property bool ready_b :
+		blockConstantsObject_O!==null
 									 &&blockVariablesObject_O!==null
 									 &&blockId_s!=="N_/A_UNSET"
 	 property bool ld_b: {
@@ -33,13 +34,13 @@ Item {
 	 property color color_c: {//probably needs change
 		if(!ready_b) return T3Styling.cRed_c;
 		let failure_b = blockVariablesObject_O["failure"];
-		let authority_b = blockVariablesObject_O["authority"];
+		let authority_s = blockVariablesObject_O["authority"];
 		if(hovered2_b)
 			return T3Styling.cFgMain_c
 		else if(failure_b)
 			return T3Styling.cRed_c
 		else{
-			if(authority_b)
+			if(authority_s&&authority_s.length>0)
 				return T3Styling.cGreen_c
 			else
 				return T3Styling.cYellow_c
@@ -72,10 +73,8 @@ Item {
 		if(!ready_b) return "";
 		return blockVariablesObject_O["trainOnBlock"];
 	}
-	 property bool trainMoveForward_b:{
-		if(!ready_b) return false;
-		if(trainInfo_s==="") return false;
-		return trainInfo_s.split("_")[1].includes("F")
+	readonly property bool trainMoveForward_b:{
+		return trainInfo_s.split("_").indexOf("F")!=-1
 	}
 	property bool sUp_b:{
 		if(!ready_b) return false;

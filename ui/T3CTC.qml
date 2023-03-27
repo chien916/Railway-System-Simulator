@@ -15,8 +15,8 @@ Item {
 	//minimumWidth: width
 	property int lineCount_i:0
 	//	readonly property variant trackDatabase_O:t3database_QML
-	//readonly property variant trackConstantsObjects_OA: t3databaseQml.trackConstantsObjects_QML
-	//readonly property variant trackVariablesObjects_OA: t3databaseQml.trackVariablesObjects_QML
+	readonly property variant trackConstantsObjects_OA: t3databaseQml.trackConstantsObjects_QML
+	readonly property variant trackVariablesObjects_OA: t3databaseQml.trackVariablesObjects_QML
 	//property variant coordinates_nA : trackConstantsObjects_OA.map(it=>solveForCoors_f(it))
 	property bool configMode_b: false
 	property bool menuMode_b:false
@@ -126,13 +126,9 @@ Item {
 					onBlockClicked: {
 						//block identifier
 						if(!menuMode_b&&!configMode_b){
-							//cBloc_configBlock.dbIndex_n = index;
 							cBloc_configBlock.blockId_s = blockId_s
-
-							rBlo_railBlockSelected.blockConstantsObject_O
-									= t3databaseQml.trackConstantsObjects_QML[index]["blocksMap"][blockId_s]
-							rBlo_railBlockSelected.blockVariablesObject_O
-									= t3databaseQml.trackVariablesObjects_QML[index][blockId_s]
+							rBlo_railBlockSelected.bcnPlcOut_s= trackVariablesObjects_OA[index][blockId_s]["COM[KC|KM]_BCNPLCOUT"]
+							rBlo_railBlockSelected.kmPlcIo_s=trackVariablesObjects_OA[index][blockId_s]["COM[KC|KM]_KMPLCIO"]
 							rBlo_railBlockSelected.blockId_s = blockId_s;
 							configMode_b = true;
 						}
@@ -175,9 +171,6 @@ Item {
 				noAnimation_b: true
 				anchors.margins: T3Styling.margin_r
 				anchors.fill: parent
-				onTrainMoveForward_bChanged: {
-					console.log(trainInfo_s)
-				}
 			}
 		}
 

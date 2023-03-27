@@ -3,42 +3,15 @@
 
 
 #include <QtCore>
+using MODU_ARGS_REF
+	= const std::tuple<const std::function<QVariant(const QString, const QString, const QJsonArray*)>*
+	  , const std::function<void(const QString, const QString, QJsonArray*, const QVariant)>*
+	  ,  QJsonArray*, QJsonArray*, QJsonArray*>*;
 class T3TrainModel {
 	static bool connectedToTrackModel;
 	static bool connectedToTrainController;
 	//TRAIN MODEL
   public:
-
-	enum TrainProperty : uint8_t {
-		Id = 0
-		, Length = 1
-		, Height = 2
-		, Width = 3
-		, Mass = 4
-		, Acceleration = 5
-		, Velocity = 6
-		, CrewCount = 7
-		, PassangerCount = 8
-		, Aircon = 9
-		, ExteriorLights = 10
-		, InteriorLights = 11
-		, LeftDoors = 12
-		, RightDoors = 13
-		, Brakes = 14
-		, Failures = 15
-		, Pid_Prev_e = 16
-		, Pid_Prev_y = 17
-		, Pid_Sum_e = 18
-		, Pid_Dt = 19
-		, Pid_R = 20
-		, Pid_Ki = 21
-		, Pid_Kp = 22
-		, Pid_Kd = 23
-		, Path = 24
-	};
-
-	static void setTrainProperty(QString trainId, TrainProperty trainProperty, QVariant value, QJsonArray* trainObjects, const QHash<T3TrainModel::TrainProperty, QPair<QString, int>>*const trainPropertiesMetaDataMap);
-	static QVariant getTrainProperty(QString trainId, TrainProperty trainProperty, const  QJsonArray* trainObjects, const QHash<T3TrainModel::TrainProperty, QPair<QString, int>>*const trainPropertiesMetaDataMap);
 
 	static void removeTrain(const QString trainId, QJsonArray* trainObjects);
 	static void createNewTrain(const QString trainId, const QJsonArray path, QJsonArray* trainObjects);
@@ -48,53 +21,6 @@ class T3TrainModel {
   private:
 	//static const QHash<T3TrainModel::TrainProperty, QPair<QString, int>> trainPropertiesMetaDataMap;
 };
-
-
-
-
-inline void T3TrainModel::setTrainProperty(QString trainId, TrainProperty trainProperty, QVariant value, QJsonArray* trainObjects, const QHash<T3TrainModel::TrainProperty, QPair<QString, int>>*const trainPropertiesMetaDataMap) {
-	QPair<QString, int> metaData = trainPropertiesMetaDataMap->value(trainProperty);
-	if(!value.canConvert(metaData.second))
-		qFatal("T3TrainModel::setTrainProperty() -> property value required and insetTrackPropertyted format doesn't match");
-	value.convert(metaData.second);
-	for(qsizetype i = 0; i < trainObjects->size(); ++i) {
-		if(!trainObjects->at(i).isObject())
-			qFatal("T3TrainModel::setTrainProperty() -> current train object is not an object.");
-		QJsonObject currTrainObject = trainObjects->at(i).toObject();
-		if(currTrainObject.find(QString("id")) == currTrainObject.end())
-			qFatal("T3TrainModel::setTrainProperty() -> current train object does not has id field.");
-		if(currTrainObject.value("id") == trainId) {
-			if(currTrainObject.find(metaData.first) == currTrainObject.end())
-				qFatal("T3TrainModel::setTrainProperty() -> current train object does not has the requested field.");
-			currTrainObject[metaData.first] = value.toJsonValue();
-			trainObjects->operator[](i) = currTrainObject;
-			return;
-		}
-	}
-	qFatal("T3TrainModel::setTrainProperty() -> cannot find train with ID provided");
-}
-
-inline QVariant T3TrainModel::getTrainProperty(QString trainId, TrainProperty trainProperty, const  QJsonArray* trainObjects, const QHash<T3TrainModel::TrainProperty, QPair<QString, int>>*const trainPropertiesMetaDataMap) {
-	QPair<QString, int> metaData = trainPropertiesMetaDataMap->value(trainProperty);
-	for(qsizetype i = 0; i < trainObjects->size(); ++i) {
-		if(!trainObjects->at(i).isObject())
-			qFatal("T3TrainModel::getTrainProperty() -> current train object is not an object.");
-		QJsonObject currTrainObject = trainObjects->at(i).toObject();
-		if(currTrainObject.find(QString("id")) == currTrainObject.end())
-			qFatal("T3TrainModel::getTrainProperty() -> current train object does not has id field.");
-		if(currTrainObject.value("id") == trainId) {
-			if(currTrainObject.find(metaData.first) == currTrainObject.end())
-				qFatal("T3TrainModel::getTrainProperty() -> current train object does not has the requested field.");
-			QVariant res = currTrainObject[metaData.first].toVariant();
-			if(!res.canConvert(metaData.second))
-				qFatal("T3TrainModel::setTrainProperty() -> property value required and insetTrackPropertyted format doesn't match");
-			res.convert(metaData.second);
-			return res;
-		}
-	}
-	qFatal("T3TrainModel::setTrainProperty() -> cannot find train with ID provided");
-	return QVariant();
-}
 
 inline void T3TrainModel::removeTrain(const QString trainId, QJsonArray *trainObjects) {
 	for(qsizetype i = 0; i < trainObjects->count(); ++i) {
@@ -110,31 +36,30 @@ inline void T3TrainModel::removeTrain(const QString trainId, QJsonArray *trainOb
 
 inline void T3TrainModel::createNewTrain(const QString trainId, const QJsonArray path, QJsonArray *trainObjects) {
 	QJsonObject trainObject;
-	trainObject.insert(QString("id"), trainId);
-	trainObject.insert(QString("length"), 32.2);
-	trainObject.insert(QString("height"), 3.42);
-	trainObject.insert(QString("width"), 2.65);
-	trainObject.insert(QString("mass"), 40.9e3);
-	trainObject.insert(QString("acceleration"), 0.0);
-	trainObject.insert(QString("velocity"), 0.0);
-	trainObject.insert(QString("crewCount"), 1);
-	trainObject.insert(QString("passangerCount"), 0);
-	trainObject.insert(QString("aircon"), QString(""));
-	trainObject.insert(QString("exteriorLights"), false);
-	trainObject.insert(QString("interiorLights"), false);
-	trainObject.insert(QString("leftDoors"), false);
-	trainObject.insert(QString("rightDoors"), false);
-	trainObject.insert(QString("brakes"), QString(""));
-	trainObject.insert(QString("failures"), QString(""));
-	trainObject.insert(QString("pid_prev_e"), 0.0);
-	trainObject.insert(QString("pid_prev_y"), 0.0);
-	trainObject.insert(QString("pid_sum_e"), 0.0);
-	trainObject.insert(QString("pid_dt"), 1.0);
-	trainObject.insert(QString("pid_r"), 0.0);
-	trainObject.insert(QString("pid_ki"), 0.0);
-	trainObject.insert(QString("pid_kp"), 0.0);
-	trainObject.insert(QString("pid_kd"), 0.0);
-	trainObject.insert(QString("path"), path);
+	trainObject.insert(QString("NM_ID"), trainId);
+	trainObject.insert(QString("NM_LENGTH"), 32.2);
+	trainObject.insert(QString("NM_HEIGHT"), 3.42);
+	trainObject.insert(QString("NM_WIDTH"), 2.65);
+	trainObject.insert(QString("NM_MASS"), 40.9e3);
+	trainObject.insert(QString("NM_ACCELERATION"), 0.0);
+	//trainObject.insert(QString("velocity"), 0.0);
+	trainObject.insert(QString("NM_CREWCOUNT"), 1);
+	trainObject.insert(QString("NM_PASSANGERCOUNT"), 0);
+	trainObject.insert(QString("NM_AIRCON"), QString(""));
+	trainObject.insert(QString("NM_DESTINATION"), QString(""));
+	trainObject.insert(QString("COM[NC_NM]_EXTLIGHT"), false);
+	trainObject.insert(QString("COM[NC_NM]_INTLIGHT"), false);
+	trainObject.insert(QString("COM[NC_NM]_LDOOR"), false);
+	trainObject.insert(QString("COM[NC_NM]_RDOOR"), false);
+	trainObject.insert(QString("COM[NC_NM]_BRAKE"), QString(""));
+	trainObject.insert(QString("COM[NC_NM]_FAILURE"), QString(""));
+	trainObject.insert(QString("NC_PREVE"), 0.0);
+	trainObject.insert(QString("NC_PREVY"), 0.0);
+	trainObject.insert(QString("NC_SUME"), 0.0);
+	trainObject.insert(QString("NC_DT"), 1.0);
+	trainObject.insert(QString("NC_R"), 0.0);
+	trainObject.insert(QString("NC_KI"), 0.0);
+	trainObject.insert(QString("NC_KP"), 0.0);
 	//setTrackProperty(originBlockId, TrackProperty::TrainOnBlock, trainId);
 	trainObjects->push_front(trainObject);
 }

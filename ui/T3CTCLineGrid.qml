@@ -168,8 +168,8 @@ Item {
 						T3CTCRailBlock{
 							anchors.fill: parent
 							blockId_s:coordinates_A/*[lineObjIndex_i]*/[index][0]
-							blockConstantsObject_O:trackConstantsObject_O["blocksMap"][blockId_s]
-							blockVariablesObject_O: trackVariablesObject_O[blockId_s]
+							bcnPlcOut_s: trackVariablesObject_O[blockId_s]["COM[KC|KM]_BCNPLCOUT"]
+							kmPlcIo_s:trackVariablesObject_O[blockId_s]["COM[KC|KM]_KMPLCIO"]
 							hovered_b: mAre_railBlock.containsMouse
 							hovered2_b: (currIndOfPathsAvailable_n===-1||!pathsAvailable_sA)?false:pathsAvailable_sA[currIndOfPathsAvailable_n]===blockId_s
 							noAnimation_b: hovered2_b

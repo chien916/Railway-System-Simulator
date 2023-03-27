@@ -4,13 +4,12 @@ Item {
 	id:root
 	signal applyClicked();
 	property string blockId_s:"B_A_5"
-	property string switchSide_s : ""
+	readonly property string switchSide_s : "left"
 	onBlockId_sChanged: {db2view(true)}
 	readonly property variant configModel_nA:[
 		//[textonly,twostate,labal,unit]
 		"F_T_Maintance Mode_"
 		,"F_F_Suggested Speed_mph"
-
 	]
 	Rectangle{
 		id:rect_canvas
@@ -110,11 +109,7 @@ Item {
 				id:cust_switchDial
 				height: T3Styling.fontSubSub_r*12
 				anchors.horizontalCenter: parent.horizontalCenter
-				ticks_nA:{
-					if(switchSide_s==="left")return [0,0.36]
-					else if(switchSide_s==="right")return [0.64,1]
-					else return [];
-				}
+				ticks_nA: [0,0.36]
 				enabled_b:custom_maintainanceMode.valueratio_r>0.5
 			}
 			Item{
@@ -291,52 +286,13 @@ Item {
 		}
 	}
 
-//	Timer{
-//		interval:1000
-//		repeat:true
-//		running:true
-//		onTriggered:{
-//		console.log(dataModel_nA)
-//		}
-//	}
 
 	function db2view(maintanceModeIncluded_b:bool){
-		if(!t3databaseQml.trackVariablesObjects_QML) return;
-		//console.log(t3databaseQml.km_getTrackProperty(blockId_s,0))
-		//handles authority
-		let authority_s = t3databaseQml.km_getTrackProperty(blockId_s,1);
-		if(!authority_s||authority_s.length===0) tInp_dispatchFrom.text = "";
-		else{
-			let splittedPath_sA = authority_s.split("|");
-			tInp_dispatchFrom.text = splittedPath_sA[splittedPath_sA.length-1].split("_").join(" ");
-		}
-		//handles maintanaceMode
-		if(maintanceModeIncluded_b){
-			let mainanceMode_b = t3databaseQml.km_getTrackProperty(blockId_s,10);
-			custom_maintainanceMode.valueratio_r = mainanceMode_b?1:0;
-		}
-		//handles suggested speed
-		let suggestedSpeed_r = t3databaseQml.km_getTrackProperty(blockId_s,0);
-		cust_suggestedSpeed.valueratio_r = suggestedSpeed_r/100;
-		//handles switch position
-		let switchIsUp_b = t3databaseQml.km_getTrackProperty(blockId_s,2);
-		for(let i = 0;i<t3databaseQml.trackConstantsObjects_QML.length;++i){
-			if(t3databaseQml.trackConstantsObjects_QML[i]["blocksMap"][root.blockId_s]!==undefined){
-				let currBlockConstantObject = t3databaseQml.trackConstantsObjects_QML[i]["blocksMap"][root.blockId_s];
-				let prevBlock2_s = currBlockConstantObject["prevBlock2"];
-				let nextBlock2_s= currBlockConstantObject["nextBlock2"];
-				if(prevBlock2_s!==""&&prevBlock2_s!=="PASSIVE"){
-					root.switchSide_s = "left"
-					cust_switchDial.dialDialValue_r = switchIsUp_b?0.36:0;
-				}
-				else if(nextBlock2_s!==""&&nextBlock2_s!=="PASSIVE"){
-					root.switchSide_s = "right"
-					cust_switchDial.dialDialValue_r = switchIsUp_b?0.64:1;
-				}else{
-					root.switchSide_s = ""
-				}
-			}
-		}
+		let metaInfo_A = t3databaseQml.ctc_readPlcInputFromMetaInfo(blockId_s);
+		custom_maintainanceMode.valueratio_r = metaInfo_A[0]?1:0;
+		cust_suggestedSpeed.valueratio_r = metaInfo_A[1]/100;
+		cust_switchDial.dialDialValue_r = metaInfo_A[2]?0.36:0;
+		tInp_dispatchFrom.text = metaInfo_A[3];
 	}
 
 	function view2db(){

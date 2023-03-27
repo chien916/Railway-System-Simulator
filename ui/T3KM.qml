@@ -79,8 +79,8 @@ Item {
 				left:item_canvas.left
 				bottom: item_canvas.bottom
 			}
-			blockConstantsObject_O:root.blockConstantsObject_O
-			blockVariablesObject_O:root.blockVariablesObject_O
+			//blockConstantsObject_O:root.blockConstantsObject_O
+			//blockVariablesObject_O:root.blockVariablesObject_O
 			blockId_s: "G_C_12"
 		}
 

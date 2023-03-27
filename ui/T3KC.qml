@@ -9,56 +9,60 @@ Item {
 	property bool hasGate_b: true
 	property string switchSide_s:"left"
 	property string direction_s:"bidirectional"
-	property string blockId_s:"B_A_5"
+	property string blockId_s:cust_trackSelector.currValue_s
+	onBlockId_sChanged: {
+		console.log(blockId_s)
+		db2view(true)
+	}
 	implicitHeight: 500
-	implicitWidth: 1000
-	readonly property variant plcInputsMapper_O:{
-		"connectionCtc":[0,0],
-		"authority":[1,1],
-		"suggestedSpeed":[2,9],
-		"leftWwitchPosition":[10,10],
-		"rightSwitchPosition":[11,11],
-		"connectionKm":[16,16],
-		"prevPrevOccup":[17,17],
-		"prevOccup":[18,18],
-		"currOccup":[19,19],
-		"nextOccup":[20,20],
-		"nextNextOccup":[21,21]
-	}
-	readonly property variant plcOutputsMapper_O:{
-		"currOccup":[0,0],
-		"authority":[4,4],
-		"commandedSpeed":[5,12],
-		"leftSwitchPosition":[16,16],
-		"rightSwitchPosition":[17,17],
-		"leftLightSignal":[18,19],
-		"rightLightSignal":[20,21],
-		"crossing":[22,22],//gate
-		"prevOccup":[24,24],
-		"nextOccup":[25,25],
-	}
-	function getValueFromPlcInputs(prop_s:string){
-		let bitsPosition_nA = plcInputsMapper_O[prop_s];
-		if(bitsPosition_nA===undefined) return;
-		let bitsMask_n = 0;
-		for(let i_n = bitsPosition_nA[0];i_n<bitsPosition_nA[1];++i_n){
-			bitsMask_n = bitsMask_n|(1<<i_n);
-		}
-		let retrieved_n = root.plcInputs_r&bitsMask_n;
-		let shiftedRetrieved_n = retrieved_n>>bitsPosition_nA[0];
-		return shiftedRetrieved_n;
-	}
-	function setValueToPlcOutputs(prop_s:string,val_n:number){
-		let bitsPosition_nA = plcInputsMapper_O[prop_s];
-		if(bitsPosition_nA===undefined) return;
-		let bitsMask_n = 0;
-		for(let i_n = bitsPosition_nA[0];i_n<bitsPosition_nA[1];++i_n){
-			bitsMask_n = bitsMask_n|(1<<i_n);
-		}
-		let clearedOutputs_n = root.plcOutputs_r&(~bitsMask_n);
-		let shiftedPushing_n = (val_n<<bitsPosition_nA[0])|clearedOutputs_n;
-		return shiftedPushing_n;
-	}
+	implicitWidth: 1200
+//	readonly property variant plcInputsMapper_O:{
+//		"connectionCtc":[0,0],
+//		"authority":[1,1],
+//		"suggestedSpeed":[2,9],
+//		"leftWwitchPosition":[10,10],
+//		"rightSwitchPosition":[11,11],
+//		"connectionKm":[16,16],
+//		"prevPrevOccup":[17,17],
+//		"prevOccup":[18,18],
+//		"currOccup":[19,19],
+//		"nextOccup":[20,20],
+//		"nextNextOccup":[21,21]
+//	}
+//	readonly property variant plcOutputsMapper_O:{
+//		"currOccup":[0,0],
+//		"authority":[4,4],
+//		"commandedSpeed":[5,12],
+//		"leftSwitchPosition":[16,16],
+//		"rightSwitchPosition":[17,17],
+//		"leftLightSignal":[18,19],
+//		"rightLightSignal":[20,21],
+//		"crossing":[22,22],//gate
+//		"prevOccup":[24,24],
+//		"nextOccup":[25,25],
+//	}
+//	function getValueFromPlcInputs(prop_s:string){
+//		let bitsPosition_nA = plcInputsMapper_O[prop_s];
+//		if(bitsPosition_nA===undefined) return;
+//		let bitsMask_n = 0;
+//		for(let i_n = bitsPosition_nA[0];i_n<bitsPosition_nA[1];++i_n){
+//			bitsMask_n = bitsMask_n|(1<<i_n);
+//		}
+//		let retrieved_n = root.plcInputs_r&bitsMask_n;
+//		let shiftedRetrieved_n = retrieved_n>>bitsPosition_nA[0];
+//		return shiftedRetrieved_n;
+//	}
+//	function setValueToPlcOutputs(prop_s:string,val_n:number){
+//		let bitsPosition_nA = plcInputsMapper_O[prop_s];
+//		if(bitsPosition_nA===undefined) return;
+//		let bitsMask_n = 0;
+//		for(let i_n = bitsPosition_nA[0];i_n<bitsPosition_nA[1];++i_n){
+//			bitsMask_n = bitsMask_n|(1<<i_n);
+//		}
+//		let clearedOutputs_n = root.plcOutputs_r&(~bitsMask_n);
+//		let shiftedPushing_n = (val_n<<bitsPosition_nA[0])|clearedOutputs_n;
+//		return shiftedPushing_n;
+//	}
 	Rectangle{
 		anchors.fill: parent
 		radius: T3Styling.margin_r
@@ -91,27 +95,38 @@ Item {
 		}
 		//Component.onCompleted: visible = true
 	}
-	Item{
-		id:item_canvas
+	T3TrackSelectorBlock{
+		id:cust_trackSelector
 		anchors{
 			top:parent.top
+			//top:sDis_segDisplay.bottom
+			//topMargin: T3Styling.margin_r
 			left:parent.left
+			bottom:parent.bottom
+			margins: T3Styling.margin_r
+		}
+		width: root.width*0.05
+	}
+	Rectangle{
+		id:item_middleScreen
+		visible: true
+		anchors{
+			top:parent.top
+			left:cust_trackSelector.right
 			right:parent.horizontalCenter
 			bottom: parent.bottom
 		}
-
+		color: "transparent"
 		anchors.margins: T3Styling.margin_r
+
 		Rectangle{
 			id:rect_leftScreen
+			visible: true
+			anchors.fill: parent
 			anchors{
-				top:parent.top
-				//top:sDis_segDisplay.bottom
-				//topMargin: T3Styling.margin_r
-				left:item_canvas.left
-				bottom:item_canvas.bottom
 				bottomMargin: T3Styling.margin_r+T3Styling.spacing_r*2
 			}
-			width:item_canvas.width/**0.7*/
+
 			radius: T3Styling.spacing_r
 			color: T3Styling.cBgMain_c
 			border.width: T3Styling.lineWidth_r
@@ -311,12 +326,11 @@ Item {
 		Grid{
 			id:grid_menuButtons
 			anchors{
-				top:rect_leftScreen.bottom
-				topMargin: T3Styling.spacing_r
 				bottom: parent.bottom
 				left:rect_leftScreen.left
 				right:rect_leftScreen.right
 			}
+			height: T3Styling.margin_r
 			spacing: T3Styling.spacing_r
 			rows:1
 			columns:2
@@ -752,7 +766,7 @@ Item {
 	}
 
 	function db2view(maintanceModeIncluded_b:bool){
-		if(!t3databaseQml.trackVariablesObjects_QML) return;
+		if(!t3databaseQml.trackVariablesObjects_QML||blockId_s=="") return;
 		//console.log(t3databaseQml.km_getTrackProperty(blockId_s,0))
 		//handles authority
 		let authority_s = t3databaseQml.km_getTrackProperty(blockId_s,1);
@@ -790,32 +804,32 @@ Item {
 		}
 	}
 
-	function view2db(){
-		if(!t3databaseQml.trackVariablesObjects_QML) return;
-		//handles authority
-		//add new authorities
-		if(tInp_dispatchFrom.text==="  ")
-			t3databaseQml.kc_revokeAuthority(blockId_s)
-		else{
-			let paths_A = t3databaseQml.ctc_getPossiblePathsFromMetaInfo(["____",blockId_s,tInp_dispatchFrom.text.split(" ").join("_"),"__:__"]);
-			if(paths_A.length===0){
-				rect_errMessage.showMessage("No Path Found");
-				return;
-			}
-			paths_A.sort((a_A,b_A)=>a_A.length-b_A.length);
-			t3databaseQml.kc_grantAuthority(paths_A[0]);
-		}
-		//handles maintanaceMode
-		t3databaseQml.km_setTrackProperty(blockId_s,10,custom_maintainanceMode.valueratio_r>0.5);
-		//handles suggested speed
-		t3databaseQml.km_setTrackProperty(blockId_s,0,cust_suggestedSpeed.actualValue_r);
-		//handles switch position
-		if(switchSide_s==="left")
-			t3databaseQml.km_setTrackProperty(blockId_s,2,cust_switchDial.currValue_n===0.36);
-		else if(switchSide_s==="right")
-			t3databaseQml.km_setTrackProperty(blockId_s,2,cust_switchDial.currValue_n===0.64);
-		//console.log(custom_maintainanceMode.valueratio_r>0.5)
-	}
+//	function view2db(){
+//		if(!t3databaseQml.trackVariablesObjects_QML) return;
+//		//handles authority
+//		//add new authorities
+//		if(tInp_dispatchFrom.text==="  ")
+//			t3databaseQml.kc_revokeAuthority(blockId_s)
+//		else{
+//			let paths_A = t3databaseQml.ctc_getPossiblePathsFromMetaInfo(["____",blockId_s,tInp_dispatchFrom.text.split(" ").join("_"),"__:__"]);
+//			if(paths_A.length===0){
+//				rect_errMessage.showMessage("No Path Found");
+//				return;
+//			}
+//			paths_A.sort((a_A,b_A)=>a_A.length-b_A.length);
+//			t3databaseQml.kc_grantAuthority(paths_A[0]);
+//		}
+//		//handles maintanaceMode
+//		t3databaseQml.km_setTrackProperty(blockId_s,10,custom_maintainanceMode.valueratio_r>0.5);
+//		//handles suggested speed
+//		t3databaseQml.km_setTrackProperty(blockId_s,0,cust_suggestedSpeed.actualValue_r);
+//		//handles switch position
+//		if(switchSide_s==="left")
+//			t3databaseQml.km_setTrackProperty(blockId_s,2,cust_switchDial.currValue_n===0.36);
+//		else if(switchSide_s==="right")
+//			t3databaseQml.km_setTrackProperty(blockId_s,2,cust_switchDial.currValue_n===0.64);
+//		//console.log(custom_maintainanceMode.valueratio_r>0.5)
+//	}
 
 
 }

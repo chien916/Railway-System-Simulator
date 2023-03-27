@@ -3,6 +3,12 @@
 
 #include <QtCore>
 #include <QtQml>
+
+using MODU_ARGS_REF
+	= const std::tuple<const std::function<QVariant(const QString, const QString, const QJsonArray*)>*
+	  , const std::function<void(const QString, const QString, QJsonArray*, const QVariant)>*
+	  ,  QJsonArray*, QJsonArray*, QJsonArray*>*;
+
 class T3TrackController {
   public:
 	static bool connectedToCTCOffice;

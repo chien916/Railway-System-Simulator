@@ -11,6 +11,7 @@ using MODU_ARGS_REF
 
 class T3TrackController {
   public:
+	static void iterate(MODU_ARGS_REF argsref, QJSEngine* plcRuntime, QJSValue* plcFunction);
 	static bool connectedToCTCOffice;
 	static bool connectedToTrackModel;
 	static void addPlcScriptFromCsv(const QString filePath, QJSEngine*runTime, QJSValue* function);
@@ -18,6 +19,47 @@ class T3TrackController {
 	static QJsonArray generatePlcOutput(const QJsonArray plcInput, QJSEngine*runTime, QJSValue* function);
 	static void writePlcOutput(const QString blockId, const QJsonArray* plcOutput, QJsonArray* trackVariablesObjects);
 };
+
+inline void T3TrackController::iterate(MODU_ARGS_REF argsref, QJSEngine* plcRuntime, QJSValue* plcFunction ) {
+	//for each route
+	for(uint lineInd = 0; lineInd <  std::get<3>(*argsref)->size(); ++lineInd) {
+		QStringList blockIds = std::get<3>(*argsref)->at(lineInd).toObject().keys();
+		for(uint blockInd = 0; blockInd < blockIds.size(); ++blockInd) {
+			QString CTCPLCIO = (*std::get<0>(*argsref))(blockIds.at(blockInd), "COM[CTC|KC]_CTCPLCIO", std::get<3>(*argsref)).toString();
+			QString BCNPLCOUT = (*std::get<0>(*argsref))(blockIds.at(blockInd), "COM[KC|KM]_BCNPLCOUT", std::get<3>(*argsref)).toString();
+			QString KMPLCIO = (*std::get<0>(*argsref))(blockIds.at(blockInd), "COM[KC|KM]_KMPLCIO", std::get<3>(*argsref)).toString();
+			QString KCPLCIN = (*std::get<0>(*argsref))(blockIds.at(blockInd), "KC_KCPLCIN", std::get<3>(*argsref)).toString();
+			QJsonArray CTCPLCIO_jsonArray, BCNPLCOUT_jsonArray, KMPLCIO_jsonArray, KCPLCIN_jsonArray;
+			for(uint i = 0; i < 32; ++i) {
+				CTCPLCIO_jsonArray.push_back(CTCPLCIO[i] == '1');
+				BCNPLCOUT_jsonArray.push_back(BCNPLCOUT[i] == '1');
+				KMPLCIO_jsonArray.push_back(KMPLCIO[i] == '1');
+				KCPLCIN_jsonArray.push_back(KCPLCIN[i] == '1');
+			}
+			QJSValueList plcArgs = {
+				plcRuntime->toScriptValue(CTCPLCIO_jsonArray),
+				plcRuntime->toScriptValue(BCNPLCOUT_jsonArray),
+				plcRuntime->toScriptValue(KMPLCIO_jsonArray),
+				plcRuntime->toScriptValue(KCPLCIN_jsonArray)
+			};
+			plcFunction->call(plcArgs);
+			CTCPLCIO_jsonArray = plcRuntime->fromScriptValue<QJsonArray>(plcArgs.at(0));
+			BCNPLCOUT_jsonArray = plcRuntime->fromScriptValue<QJsonArray>(plcArgs.at(1));
+			KMPLCIO_jsonArray = plcRuntime->fromScriptValue<QJsonArray>(plcArgs.at(2));
+			KCPLCIN_jsonArray = plcRuntime->fromScriptValue<QJsonArray>(plcArgs.at(3));
+			for(uint i = 0; i < 32; ++i) {
+				CTCPLCIO[i] = CTCPLCIO_jsonArray.at(i).toBool() ? '1' : '0';
+				BCNPLCOUT[i] = BCNPLCOUT_jsonArray.at(i).toBool() ? '1' : '0';
+				KMPLCIO[i] = KMPLCIO_jsonArray.at(i).toBool() ? '1' : '0';
+				KCPLCIN[i] = KCPLCIN_jsonArray.at(i).toBool() ? '1' : '0';
+			}
+			(*std::get<1>(*argsref))(blockIds.at(blockInd), "COM[CTC|KC]_CTCPLCIO", std::get<3>(*argsref), CTCPLCIO);
+			(*std::get<1>(*argsref))(blockIds.at(blockInd), "COM[KC|KM]_BCNPLCOUT", std::get<3>(*argsref), BCNPLCOUT);
+			(*std::get<1>(*argsref))(blockIds.at(blockInd), "COM[KC|KM]_KMPLCIO", std::get<3>(*argsref), KMPLCIO);
+			(*std::get<1>(*argsref))(blockIds.at(blockInd), "KC_KCPLCIN", std::get<3>(*argsref), KCPLCIN);
+		}
+	}
+}
 
 inline void T3TrackController::addPlcScriptFromCsv(const QString filePath, QJSEngine*runTime, QJSValue* function) {
 	QString newFilePath = QString(filePath).replace("file:///", "");

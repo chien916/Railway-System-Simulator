@@ -81,7 +81,9 @@ class T3Database: public QObject {
   private:
 
 	bool firebaseEnabled = false;
+	bool localFileEnabled = true;
 	QString firebaseRootUrlString = "https://sprn2023-ece1140-default-rtdb.firebaseio.com/";
+	QString filepathString = "C:/Users/YIQ25/Desktop/TEST";
 	QNetworkAccessManager networkAccessManager;
 
 	using DB_MAPPER_T = QVarLengthArray<std::tuple<QString, QJsonArray*, void(T3Database::*)(void)>, 4>;
@@ -264,17 +266,25 @@ inline void T3Database::db_toggleFirebase(bool enableFirebase) {
 }
 
 inline void T3Database::db_pushToFirebase(uint8_t selector) {
-	if(!firebaseEnabled) return;
 	for(uint8_t i = 0; i < DB_MAPPER.size(); ++i) {
 		if((selector & (1 << i)) == 0) continue;
 		const QString currJsonTitleToPush = std::get<0>(DB_MAPPER.at(i));
 		const QJsonArray* currJsonValToPush = std::get<1>(DB_MAPPER.at(i));
 		const QByteArray serializedObj = QJsonDocument(*currJsonValToPush).toJson();
-		QNetworkRequest networkRequest(QUrl(firebaseRootUrlString + QString("/%1.json").arg(currJsonTitleToPush)));
-		networkRequest.setHeader(QNetworkRequest::ContentTypeHeader, QString("application/json"));
-		QNetworkReply* networkReply = networkAccessManager.put(networkRequest, serializedObj);
-		if(networkReply->error() != QNetworkReply::NetworkError::NoError)
-			qInfo() << QMetaEnum::fromType<QNetworkReply::NetworkError>().valueToKey(networkReply->error());
+		if(firebaseEnabled) {
+			QNetworkRequest networkRequest(QUrl(firebaseRootUrlString + QString("/%1.json").arg(currJsonTitleToPush)));
+			networkRequest.setHeader(QNetworkRequest::ContentTypeHeader, QString("application/json"));
+			QNetworkReply* networkReply = networkAccessManager.put(networkRequest, serializedObj);
+			if(networkReply->error() != QNetworkReply::NetworkError::NoError)
+				qInfo() << QMetaEnum::fromType<QNetworkReply::NetworkError>().valueToKey(networkReply->error());
+		}
+		if(localFileEnabled) {
+			QFile fileToWriteLog(filepathString + QString("/%1.json").arg(currJsonTitleToPush));
+			if(fileToWriteLog.open(QFile::WriteOnly))
+				fileToWriteLog.write(serializedObj);
+			else
+				qFatal(fileToWriteLog.errorString().toUtf8());
+		}
 	}
 }
 
@@ -430,7 +440,7 @@ inline void T3Database::nc_iterate() {
 //=========================其他========================
 //====================================================
 
-inline void T3Database::timerEvent(QTimerEvent *event) {
+inline void T3Database::timerEvent(QTimerEvent * event) {
 	Q_UNUSED(event);
 	//update time
 	this->currentTime = this->currentTime.addMSecs(100 * static_cast<int>(timerRate));

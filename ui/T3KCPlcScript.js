@@ -13,6 +13,8 @@
  * -> curr occupancy[23]  -> do nothing
  * -> failure mode[24:25]  -> do nothing
  * -> trackControllerMaintanceMode[26]
+ * -> wayside connected to train model[27] ?
+ * -> wayside connected to beacon[28] ?
  * 
  * inputs from track controller
  * -> connection[0]
@@ -36,6 +38,7 @@
  * -> nextnext occupancy[5] 
  * -> failure mode[6:7] 
  * -> speed limit[8:15]
+ * 
  * -> left signal[16:17]
  * -> switch [18]
  * -> gate [19]
@@ -56,9 +59,10 @@
  * -> authority direction [0:1]  AS LONG AS CONNECTIONS OK -> pass to beacon -> do nothing
  * -> authority block numbers[2:9]  AS LONG AS CONNECTIONS OK -> pass to beacon -> do nothing
  * -> commanded speed[10:17]
- * -> crossing
- * -> station 
- * -> underground
+ * -> station on the left[26]
+ * -> station on the right[27]
+ * -> is underground[28]
+ * -> has crossing gate[29]
  * 
 
 
@@ -67,26 +71,24 @@
  * @param {bool[32]} $CTC_IO 
  * @param {bool[32]} $KC_IN 
  * @param {bool[32]} $KM_IO 
- * @param {bool[32]} $CTC_OUT 
  * @param {bool[32]} $BCN_OUT 
- * @param {bool[32]} $KM_OUT 
  */
 function plc($CTC_IO, $KC_IN, $KM_IO, $CTC_OUT, $BCN_OUT, $KM_OUT) {
 
 
-    $CTC_OUT[0] = $KM_IO[0] & //IF TRACK MODEL IS CONNECTED
-        $KM_IO[3];//PASS THE CURRENT OCCUPANCY OF TRACK MODEL TO CTC, 
-    //0 IF CONNECTION LOST
+    // $CTC_OUT[0] = $KM_IO[0] & //IF TRACK MODEL IS CONNECTED
+    //     $KM_IO[3];//PASS THE CURRENT OCCUPANCY OF TRACK MODEL TO CTC, 
+    // //0 IF CONNECTION LOST
 
 
     for (let $_ = 1; $_ >= 0; --$_)
-        $CTC_OUT[1 + $_] =
+        $CTC_IO[24 + $_] =
             $KM_IO[0] & //IF TRACK MODEL IS CONNECTED
             $KM_IO[6 + $_];//PASS THE FAILURE MODE OF TRACK MODEL TO CTC, 0 IF CONNECTION LOST
     //0 IF CONNECTION LOST
 
 
-    $CTC_OUT[3] =
+    $CTC_IO[26] =
         $KC_IN[0]  //IF WAYSIDE IS CONNECTED
         & $KC_IN[1];//PASS THE MAINTANCE MODE OF WAYSIDE TO CTC
     // 0 IF CONNECTION LOST
@@ -120,17 +122,23 @@ function plc($CTC_IO, $KC_IN, $KM_IO, $CTC_OUT, $BCN_OUT, $KM_OUT) {
                 $CTC_IO[2 + $_] : //PASS THE SUGGESTED SPEED FROM CTC TO BEACON
                 ($BCN_OUT[10 + $_] & $BCN_OUT[2 + $_ + 2]);//OTHERWISE, CALCULATE MIN((NUMBER OF BLOCKS AUTHORIZED)*4,SPEED LIMIT FROM TRACK MODEL) AS OPTIMIZED COMMANDED SPEED TO BEACON
 
+    //COPY CONSTANT INFRASTRUCTURE INFORMATION TO BEACON FOR TRAIN TO READ
+    $BCN_OUT[26] = $KM_IO[26]
+    $BCN_OUT[27] = $KM_IO[27]
+    $BCN_OUT[28] = $KM_IO[28]
+    $BCN_OUT[29] = $KM_IO[29]
+
     //KM::LEFT_SIGNAL
-    $KM_OUT[0] =
+    $KM_IO[16] =
         ($KC_IN[0] & $KC_IN[0]) ?//IF WAYSIDE IS CONNECTED AND UNDER MAINTANANCE MODE
             $KC_IN[10] ://USE THE MANUAL LEFT SIGNAL FROM WAYSIDE
             ~$KM_IO[1] & ~$KM_IO[2];
-    $KM_OUT[1] =
+    $KM_IO[17] =
         ($KC_IN[0] & $KC_IN[0]) ?//IF WAYSIDE IS CONNECTED AND UNDER MAINTANANCE MODE
             $KC_IN[11] ://USE THE MANUAL LEFT SIGNAL FROM WAYSIDE
             $KM_IO[1] & ~$KM_IO[2];
 
-    $KM_OUT[2] = //NEW SWITCH POSITION FOR TRACK MODEL
+    $KM_IO[18] = //NEW SWITCH POSITION FOR TRACK MODEL
         ($KC_IN[0] & $KC_IN[0]) ?//IF WAYSIDE IS CONNECTED AND UNDER MAINTANANCE MODE
             $KC_IN[2 + $_] ://USE THE MANUAL SWITCH POSITION FROM WAYSIDE
             ($CTC_IO[0] & $CTC_IO[0]) ?//ELSE IF CTC IS CONNECTED AND UNDER MAINTANANCE MODE
@@ -139,17 +147,17 @@ function plc($CTC_IO, $KC_IN, $KM_IO, $CTC_OUT, $BCN_OUT, $KM_OUT) {
 
 
     //KM::CROSSING_GATE
-    $KM_OUT[3] =//NEW CROSSING GATE POSITION FOR TRACK MODEL
+    $KM_IO[19] =//NEW CROSSING GATE POSITION FOR TRACK MODEL
         ($KC_IN[0] & $KC_IN[0]) ?//IF WAYSIDE IS CONNECTED AND UNDER MAINTANANCE MODE
             $KC_IN[13] ://USE THE MANUAL GATE POSITION FROM WAYSIDE
             $KM_IO[1] | $KM_IO[2] | $KM_IO[3] | $KM_IO[4] | $KM_IO[5];//OTHERWISE, GATE IS CLOSED IF TRAIN OCCUP WITHIN 2 BLOCKS
 
     //KM::RIGHT_SIGNAL
-    $KM_OUT[4] =
+    $KM_IO[20] =
         ($KC_IN[0] & $KC_IN[0]) ?//IF WAYSIDE IS CONNECTED AND UNDER MAINTANANCE MODE
             $KC_IN[14] ://USE THE MANUAL GATE POSITION FROM WAYSIDE
             ~$KM_IO[4] & ~$KM_IO[5];
-    $KM_OUT[5] =
+    $KM_IO[21] =
         ($KC_IN[0] & $KC_IN[0]) ?//IF WAYSIDE IS CONNECTED AND UNDER MAINTANANCE MODE
             $KC_IN[15] ://USE THE MANUAL GATE POSITION FROM WAYSIDE
             ~$KM_IO[4] & $KM_IO[5];

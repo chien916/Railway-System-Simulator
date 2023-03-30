@@ -1,28 +1,15 @@
 #ifndef T3TRACKMODEL_H
 #define T3TRACKMODEL_H
+#include "t3prophelper.h"
 
-#include <QtCore>
-using MODU_ARGS_REF
-	= const std::tuple<const std::function<QVariant(const QString, const QString, const QJsonArray*)>*
-	  , const std::function<void(const QString, const QString, QJsonArray*, const QVariant)>*
-	  , QJsonArray*, QJsonArray*, QJsonArray*>*;
 class T3TrackModel {
   public:
 
-	static bool connectedToTrackController;
-	static bool connectedToTrainModel;
-
 	static void placeTrainFromDispatchRequest(const QList<QJsonObject>* requests, MODU_ARGS_REF argsref);
-	static void trackIterate(MODU_ARGS_REF argsref);
-	static void plcIterate(QVarLengthArray<QPair<const QJsonObject*, QJsonObject*>, 5>& quintupleBlocks);
 	static void addTrackFromCsv(const QString filePath, QJsonObject* stationToIdMapObject, MODU_ARGS_REF argsref);
-	static QString determineMovingDirection(const QString currBlockId, const QString nextOrPrevBlockId, MODU_ARGS_REF argsref);
+	static QJsonArray getDisplayStrings(const QString blockId, MODU_ARGS_REF argsref);
   private:
-	//static const QHash<T3TrackModel::TrackProperty, QPair<QString, int>> trackPropertiesMetaDataMap;
 
-	static QString getPrevOrNextBlock(QString currBlockId
-									  , const QJsonObject *currTrackCon, QJsonObject *currTrackVar
-									  , bool reversedLook, bool *viewReversed);
 };
 
 
@@ -193,30 +180,62 @@ inline void T3TrackModel::addTrackFromCsv(const QString filePath, QJsonObject* s
 	fileToWriteLog2.close();
 }
 
-inline QString T3TrackModel::determineMovingDirection(const QString currBlockId, const QString nextOrPrevBlockId, MODU_ARGS_REF argsref) {
-	for(qsizetype i = 0; i < std::get<2>(*argsref)->size(); ++i) {
-		const QJsonObject currLineBlockMapObject = std::get<2>(*argsref)->at(i).toObject().value("blocksMap").toObject();
-		const QString startingBlock1 = std::get<2>(*argsref)->at(i).toObject().value("startingBlock1").toString();
-		const QString startingBlock2 = std::get<2>(*argsref)->at(i).toObject().value("startingBlock2").toString();
-		const QString endingBlock1 = std::get<2>(*argsref)->at(i).toObject().value("endingBlock1").toString();
-		const QString endingBlock2 = std::get<2>(*argsref)->at(i).toObject().value("endingBlock2").toString();
-		if(currLineBlockMapObject.contains(currBlockId)) {
-			QString nextBlock1 = currLineBlockMapObject.value(currBlockId).toObject().value("nextBlock1").toString();
-			QString nextBlock2 = currLineBlockMapObject.value(currBlockId).toObject().value("nextBlock2").toString();
-			QString prevBlock1 = currLineBlockMapObject.value(currBlockId).toObject().value("prevBlock1").toString();
-			QString prevBlock2 = currLineBlockMapObject.value(currBlockId).toObject().value("prevBlock2").toString();
-			if(nextOrPrevBlockId == nextBlock1 || nextOrPrevBlockId == nextBlock2) return "FORWARD";
-			else if(nextOrPrevBlockId == prevBlock1 || nextOrPrevBlockId == prevBlock2)return "REVERSED";
-			else if("START_T" == prevBlock1 && startingBlock2 == nextOrPrevBlockId) return "REVERSED";
-			else if("START_B" == prevBlock1 && startingBlock1 == nextOrPrevBlockId)return "REVERSED";
-			else if("END_T" == prevBlock1 && endingBlock2 == nextOrPrevBlockId)return "FORWARD";
-			else if("END_B" == prevBlock1 && endingBlock1 == nextOrPrevBlockId)return "FORWARD";
-			else qFatal("T3TrackModel::determineMovingDirection() -> Origin Track found, but nextOrPrevBlock is not neiboring block.");
-		}
-	}
-	qFatal("T3TrackModel::determineMovingDirection() -> Origin Track not found");
-	return "";
+inline QJsonArray T3TrackModel::getDisplayStrings(const QString blockId, MODU_ARGS_REF argsref) {
+	QVector<QString> retRaw(30, QString());
+	QString KMPLCIO = GET_TRACKVAR_F(blockId, "COM[KC|KM]_KMPLCIO", argsref).toString();
+	QString BCNPLCOUT  = GET_TRACKVAR_F(blockId, "COM[KC|KM]_BCNPLCOUT", argsref).toString();
+	QStringRef helper;
+	uint numberHelper = 0.0f;
+	retRaw[0] = " ";//	,"/TRACK PROPERTIES"
+	retRaw[1] = blockId.split("_").join(" ");//	,"Track ID",
+	retRaw[2] = QString::number((GET_TRACKCON_F(blockId, "grade", argsref).toFloat()), 'g', 3); //	,"Grade"
+	retRaw[3] = QString::number(M2FOOT_F(GET_TRACKCON_F(blockId, "elevation", argsref).toFloat()), 'g', 3) + " ft"; //	,"Elevation"
+	retRaw[4] = QString::number(M2YARD_F(GET_TRACKCON_F(blockId, "length", argsref).toFloat()), 'g', 3) + " yd"; //	,"Length"
+	retRaw[5] = QString::number(KMH2MPH_F(GET_TRACKCON_F(blockId, "speedLimit", argsref).toFloat()), 'g', 3) + " mph";//	,"Speed Limit"
+	retRaw[6] = GET_TRACKCON_F(blockId, "direction", argsref).toString();//	,"Direction of Travel"
+	retRaw[7] = GET_TRACKCON_F(blockId, "crossing", argsref).toBool() ? "-" : KMPLCIO[19] == '1' ? "CLOSED" : "OPEN"; //	,"Railway Crossings"
+	retRaw[8] = GET_TRACKVAR_F(blockId, "KM_HEATER", argsref).toBool() ? "ON" : "OFF"; //	,"Track Heaters"
+	retRaw[9] = " ";//	,"/TRACK STATUS"
+	retRaw[10] = "-";//	"Enviroment Temperature"
+	retRaw[11] = KMPLCIO[3] == '1' ? "ON" : "OFF";//	,"Train Occupancy"
+	retRaw[12] = (KMPLCIO[24] == '1' || KMPLCIO[25] == '1') ? (
+					 QString(KMPLCIO[24] == '1' ? "LEFT " : "RIGHT ") + QString(KMPLCIO[18] == '1' ? "UP" : "DOWN")
+				 ) : "-"; //	,"Switch Position"
+	helper = KMPLCIO.midRef(16, 2);
+	retRaw[13] = KMPLCIO[22] == '1' ? (
+					 helper == "00" ? "RED" :	(helper == "01" ? "YELLOW" : "GREEN")
+				 ) : "-"; //	,"Left Signal Light"
+	helper = KMPLCIO.midRef(20, 2);
+	retRaw[14] = KMPLCIO[23] == '1' ? (
+					 helper == "00" ? "RED" :	(helper == "01" ? "YELLOW" : "GREEN")
+				 ) : "-";;//	,"Right Signal Light"
+	retRaw[15] = " ";//	,"/BEACON"
+	retRaw[16] = BCNPLCOUT[28] == '1' ? "YES" : "NO";//	,"Underground"
+	helper = BCNPLCOUT.midRef(2, 8);
+	numberHelper = helper.toUInt(nullptr, 2);
+	retRaw[18] = QString::number(numberHelper);//	,"Authority Block Number"
+	helper = BCNPLCOUT.midRef(0, 2);
+	retRaw[17] = numberHelper == 0 ? "-" : (QString(helper[1] == '1' ? "TOP " : "BOTTOM ") + QString(helper[0] == '1' ? "BACK" : "FORWARD")); //	,"Authority Direction"
+	helper = BCNPLCOUT.midRef(10, 8);
+	numberHelper = helper.toUInt(nullptr, 2);
+	retRaw[19] = QString::number(numberHelper);//	,"Commanded Speed"
+	retRaw[20] = " ";//	,"/STATION PROPERTIES"
+	QStringList stationhelper = GET_TRACKCON_F(blockId, "station", argsref).toString().split("_");
+	retRaw[21] = (stationhelper.size() == 0 || stationhelper.first() == "") ? "-" : stationhelper.at(0); //	,"Station Name"
+	retRaw[22] = (stationhelper.size() == 0 || stationhelper.first() == "") ? "-" :
+				 (QString(stationhelper.at(1).contains("L") ? "LEFT " : "")
+				  + QString(stationhelper.at(1).contains("R") ? "RIGHT" : "")).trimmed(); //	,"Station Sides"
+	retRaw[23] = QString::number(GET_TRACKVAR_F(blockId, "KM_PEOPLEONSTATION", argsref).toUInt());//	,"People on Station"
+	retRaw[24] = "?";//	,"People Boarding"
+	retRaw[25] = "?";//	,"People Disembarking"
+	retRaw[26] = " ";//	,"/FAILURE MODES"
+	retRaw[27] = KMPLCIO[6] == '1' ? "YES" : "NO" ; //	,"Broken Rail Failure"
+	retRaw[28] = KMPLCIO[7] == '1' ? "YES" : "NO" ; //	,"Track Circuit Failure"
+	retRaw[29] = KMPLCIO[30] == '1' ? "YES" : "NO" ;//	,"Power Failure"
+	return QJsonArray::fromStringList(QStringList::fromVector(retRaw));
 }
+
+
 
 
 
@@ -227,110 +246,86 @@ inline void T3TrackModel::placeTrainFromDispatchRequest(const QList<QJsonObject>
 		QString destination = currRequest.value("destination").toString();
 		QJsonArray path = currRequest.value("path").toArray();
 		//determine if the train is moving forward or backward
-		bool isForward = (path.size() > 1)
-						 ? determineMovingDirection(origin, path.at(1).toString(), argsref) == "FORWARD"
-						 : true;
+		bool isForward = true;
 		QString trainOnBlockConcatStr = QString("%1_%2_0.0").arg(trainId).arg(isForward ? "F" : "R");
 		//place train on track
 		(*std::get<1>(*argsref))(origin, "KM_TRAINONBLOCK", std::get<3>(*argsref), trainOnBlockConcatStr);
 	}
 }
 
-inline void T3TrackModel::trackIterate(MODU_ARGS_REF argsref) {
-	for(qsizetype i = 0; i < std::get<3>(*argsref)->count(); ++i) {
-		QJsonObject currTrackVarObj = std::get<3>(*argsref)->at(i).toObject();
-		const QJsonObject currTrackConObj = std::get<2>(*argsref)->at(i).toObject().value("blocksMap").toObject();
-		QStringList blockIds = currTrackVarObj.keys();
-		for(qsizetype j = 0; j < blockIds.count(); ++j) {
+//inline void T3TrackModel::trackIterate(MODU_ARGS_REF argsref) {
+//	for(qsizetype i = 0; i < std::get<3>(*argsref)->count(); ++i) {
+//		QJsonObject currTrackVarObj = std::get<3>(*argsref)->at(i).toObject();
+//		const QJsonObject currTrackConObj = std::get<2>(*argsref)->at(i).toObject().value("blocksMap").toObject();
+//		QStringList blockIds = currTrackVarObj.keys();
+//		for(qsizetype j = 0; j < blockIds.count(); ++j) {
 
-			//determine prev2 prev1 next1 next2 blockId and object
-			QString currBlockId = blockIds.at(j);
-			const QJsonObject currBlockConObj = currTrackConObj.value(currBlockId).toObject();
-			QJsonObject currBlockVarObj = currTrackVarObj.value(currBlockId).toObject();
+//			//determine prev2 prev1 next1 next2 blockId and object
+//			QString currBlockId = blockIds.at(j);
+//			const QJsonObject currBlockConObj = currTrackConObj.value(currBlockId).toObject();
+//			QJsonObject currBlockVarObj = currTrackVarObj.value(currBlockId).toObject();
 
-			bool prevViewReversed = false, nextViewReversed = false;
+//			bool prevViewReversed = false, nextViewReversed = false;
 
-			QString prev1BlockId
-				= getPrevOrNextBlock(currBlockId, &currTrackConObj, &currTrackVarObj, true != prevViewReversed, &prevViewReversed);
-			QString prev2BlockId
-				= getPrevOrNextBlock(prev1BlockId, &currTrackConObj, &currTrackVarObj, true != prevViewReversed, &prevViewReversed);
-			QString next1BlockId
-				= getPrevOrNextBlock(currBlockId, &currTrackConObj, &currTrackVarObj, true != nextViewReversed, &nextViewReversed);
-			QString next2BlockId
-				= getPrevOrNextBlock(next1BlockId, &currTrackConObj, &currTrackVarObj, true != nextViewReversed, &nextViewReversed);
+//			QString prev1BlockId
+//				= getPrevOrNextBlock(currBlockId, &currTrackConObj, &currTrackVarObj, true != prevViewReversed, &prevViewReversed);
+//			QString prev2BlockId
+//				= getPrevOrNextBlock(prev1BlockId, &currTrackConObj, &currTrackVarObj, true != prevViewReversed, &prevViewReversed);
+//			QString next1BlockId
+//				= getPrevOrNextBlock(currBlockId, &currTrackConObj, &currTrackVarObj, true != nextViewReversed, &nextViewReversed);
+//			QString next2BlockId
+//				= getPrevOrNextBlock(next1BlockId, &currTrackConObj, &currTrackVarObj, true != nextViewReversed, &nextViewReversed);
 
-			const QJsonObject prev1BlockConObj = currTrackConObj.value(prev1BlockId).toObject();
-			const QJsonObject prev2BlockConObj = currTrackConObj.value(prev2BlockId).toObject();
-			const QJsonObject next1BlockConObj = currTrackConObj.value(next1BlockId).toObject();
-			const QJsonObject next2BlockConObj = currTrackConObj.value(next2BlockId).toObject();
+//			const QJsonObject prev1BlockConObj = currTrackConObj.value(prev1BlockId).toObject();
+//			const QJsonObject prev2BlockConObj = currTrackConObj.value(prev2BlockId).toObject();
+//			const QJsonObject next1BlockConObj = currTrackConObj.value(next1BlockId).toObject();
+//			const QJsonObject next2BlockConObj = currTrackConObj.value(next2BlockId).toObject();
 
-			QJsonObject prev1BlockVarObj = currTrackVarObj.value(prev1BlockId).toObject();
-			QJsonObject prev2BlockVarObj = currTrackVarObj.value(prev2BlockId).toObject();
-			QJsonObject next1BlockVarObj = currTrackVarObj.value(next1BlockId).toObject();
-			QJsonObject next2BlockVarObj = currTrackVarObj.value(next2BlockId).toObject();
+//			QJsonObject prev1BlockVarObj = currTrackVarObj.value(prev1BlockId).toObject();
+//			QJsonObject prev2BlockVarObj = currTrackVarObj.value(prev2BlockId).toObject();
+//			QJsonObject next1BlockVarObj = currTrackVarObj.value(next1BlockId).toObject();
+//			QJsonObject next2BlockVarObj = currTrackVarObj.value(next2BlockId).toObject();
 
-			QVarLengthArray<QPair<const QJsonObject*, QJsonObject*>, 5> quintupleBlocks = {
-				qMakePair(&prev2BlockConObj, &prev2BlockVarObj)
-				, qMakePair(&prev1BlockConObj, &prev1BlockVarObj)
-				, qMakePair(&currBlockConObj, &currBlockVarObj)
-				, qMakePair(&next1BlockConObj, &next1BlockVarObj)
-				, qMakePair(&next2BlockConObj, &next2BlockVarObj)
-			};
+//			QVarLengthArray<QPair<const QJsonObject*, QJsonObject*>, 5> quintupleBlocks = {
+//				qMakePair(&prev2BlockConObj, &prev2BlockVarObj)
+//				, qMakePair(&prev1BlockConObj, &prev1BlockVarObj)
+//				, qMakePair(&currBlockConObj, &currBlockVarObj)
+//				, qMakePair(&next1BlockConObj, &next1BlockVarObj)
+//				, qMakePair(&next2BlockConObj, &next2BlockVarObj)
+//			};
 
-			T3TrackModel::plcIterate(quintupleBlocks);
-//			//----STAGE 2 : TRAIN POSITION UPDATE
-		}
-		std::get<3>(*argsref)->replace(i, currTrackVarObj);
-	}
-}
+//			T3TrackModel::plcIterate(quintupleBlocks);
+////			//----STAGE 2 : TRAIN POSITION UPDATE
+//		}
+//		std::get<3>(*argsref)->replace(i, currTrackVarObj);
+//	}
+//}
 
-inline void T3TrackModel::plcIterate(QVarLengthArray<QPair<const QJsonObject*, QJsonObject*>, 5>& quintupleBlocks) {
-	Q_ASSERT(quintupleBlocks.size() == 5);
-	bool currHasCrossing = quintupleBlocks.at(2).second->value("crossing").toBool();
 
-	//get occupancy of prev2 prev1 curr next1 next2
-	bool prev2occupancy = quintupleBlocks.at(0).second->value("trainOnBlock").toString().compare("") != 0;
-	bool prev1occupancy = quintupleBlocks.at(1).second->value("trainOnBlock").toString().compare("") != 0;
-	bool curroccupancy = quintupleBlocks.at(2).second->value("trainOnBlock").toString().compare("") != 0;
-	bool next1occupancy = quintupleBlocks.at(3).second->value("trainOnBlock").toString().compare("") != 0;
-	bool next2occupancy = quintupleBlocks.at(4).second->value("trainOnBlock").toString().compare("") != 0;
-
-	QString reversedLight = prev1occupancy ? "stop" : (prev2occupancy ? "approach" : "clear");
-	QString forwardLight = next1occupancy ? "stop" : (next1occupancy ? "approach" : "clear");
-	QString crossing = currHasCrossing
-					   ? ((prev2occupancy || prev1occupancy || curroccupancy || next1occupancy || next2occupancy)
-						  ? "down" : "up")
-					   : "";
-
-	quintupleBlocks.at(2).second->insert("forwardLight", forwardLight);
-	quintupleBlocks.at(2).second->insert("reversedLight", reversedLight);
-	quintupleBlocks.at(2).second->insert("crossingPosition", crossing);
-}
-
-inline QString T3TrackModel::getPrevOrNextBlock(QString currBlockId
-		, const QJsonObject *currTrackCon, QJsonObject *currTrackVar
-		, bool reversedLook, bool *viewReversed) {
-	const QJsonObject currBlockCon = currTrackCon->value(currBlockId).toObject();
-	QJsonObject currBlockVar = currTrackVar->value(currBlockId).toObject();
-	*viewReversed = true;
-	//input is current block pair (constants,variables) and bool indicating if going backward
-	//output is the block pair calculated, either previous or next based on args[1]
-	QVarLengthArray<QString, 2> prevNextBlockIds{QString(), QString()};
-	for(int i = 1; i <= 2; ++i) {
-		QString istr = QString::number(i);
-		prevNextBlockIds.replace(i - 1, currBlockCon.value(reversedLook ? "prevBlock" + istr  : "nextBlock" + istr).toString());
-		if(prevNextBlockIds.at(i - 1).compare(reversedLook ? "END_T" : "START_T") == 0)
-			prevNextBlockIds.replace(i - 1,  currTrackCon->value(reversedLook ? "endingBlock2" : "startingBlock2").toString());
-		else if(prevNextBlockIds.at(i - 1).compare(reversedLook ? "END_B" : "START_B") == 0)
-			prevNextBlockIds.replace(i - 1, currTrackCon->value(reversedLook ? "endingBlock1" : "startingBlock1").toString());
-		else *viewReversed = false;
-	}
-	const bool currSwitchPosition = currBlockVar.value("switchPosition").toBool();
-	QString prevNextBlockId
-		= (prevNextBlockIds.at(1) != "" && prevNextBlockIds.at(1) != "PASSIVE" && !currSwitchPosition)
-		  ? prevNextBlockIds.at(1) : prevNextBlockIds.at(0) ;
-	return prevNextBlockId;
-}
+//inline QString T3TrackModel::getPrevOrNextBlock(QString currBlockId
+//		, const QJsonObject *currTrackCon, QJsonObject *currTrackVar
+//		, bool reversedLook, bool *viewReversed) {
+//	const QJsonObject currBlockCon = currTrackCon->value(currBlockId).toObject();
+//	QJsonObject currBlockVar = currTrackVar->value(currBlockId).toObject();
+//	*viewReversed = true;
+//	//input is current block pair (constants,variables) and bool indicating if going backward
+//	//output is the block pair calculated, either previous or next based on args[1]
+//	QVarLengthArray<QString, 2> prevNextBlockIds{QString(), QString()};
+//	for(int i = 1; i <= 2; ++i) {
+//		QString istr = QString::number(i);
+//		prevNextBlockIds.replace(i - 1, currBlockCon.value(reversedLook ? "prevBlock" + istr  : "nextBlock" + istr).toString());
+//		if(prevNextBlockIds.at(i - 1).compare(reversedLook ? "END_T" : "START_T") == 0)
+//			prevNextBlockIds.replace(i - 1,  currTrackCon->value(reversedLook ? "endingBlock2" : "startingBlock2").toString());
+//		else if(prevNextBlockIds.at(i - 1).compare(reversedLook ? "END_B" : "START_B") == 0)
+//			prevNextBlockIds.replace(i - 1, currTrackCon->value(reversedLook ? "endingBlock1" : "startingBlock1").toString());
+//		else *viewReversed = false;
+//	}
+//	const bool currSwitchPosition = currBlockVar.value("switchPosition").toBool();
+//	QString prevNextBlockId
+//		= (prevNextBlockIds.at(1) != "" && prevNextBlockIds.at(1) != "PASSIVE" && !currSwitchPosition)
+//		  ? prevNextBlockIds.at(1) : prevNextBlockIds.at(0) ;
+//	return prevNextBlockId;
+//}
 
 
 

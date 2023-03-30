@@ -1,12 +1,6 @@
 #ifndef T3TrainModel_HPP
 #define T3TrainModel_HPP
-
-
-#include <QtCore>
-using MODU_ARGS_REF
-	= const std::tuple<const std::function<QVariant(const QString, const QString, const QJsonArray*)>*
-	  , const std::function<void(const QString, const QString, QJsonArray*, const QVariant)>*
-	  ,  QJsonArray*, QJsonArray*, QJsonArray*>*;
+#include "t3prophelper.h"
 class T3TrainModel {
 	static bool connectedToTrackModel;
 	static bool connectedToTrainController;

@@ -11,7 +11,7 @@
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "program": "${workspaceFolder}\\T3GridSolver.js"
+            "program": "${workspaceFolder}\\T3KCPlcScript.js"
         }
     ]
 }

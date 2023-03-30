@@ -493,14 +493,7 @@ Item {
 		}
 	}
 
-	Timer{
-		interval:1000
-		running:true
-		repeat:true
-		onTriggered: {
-			console.log(kmPlcIo_s.charAt(25))
-		}
-	}
+
 
 	//--TESTING ONLY
 	implicitHeight: 400

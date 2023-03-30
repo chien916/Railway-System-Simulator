@@ -51,7 +51,12 @@ Item {
 				width: colu_column.width
 				height: colu_column.unitHeight_r*2+colu_column.anchors.margins
 				readOnly_b: false
-				paramConfig_A: "F_T_Automatic Mode_"
+				paramConfig_A: "F_T_CTC Master Switch_"
+				onValueratio_rChanged: {
+					if(valueratio_r===0) t3databaseQml.ctc_toggleConnection(false);
+					else if(valueratio_r===1 ) t3databaseQml.ctc_toggleConnection(true);
+					console.log(valueratio_r)
+				}
 			}
 			T3Button{
 				width: colu_column.width

@@ -4,17 +4,18 @@ Rectangle {
 	id:root
 	//Modify these as delegate:
 	//[textonly,twostate,labal,unit]
-	property string paramConfig_A: "F_T_Speed_Mph";
+	property string paramConfig_A: "F_F_Speed_Mph";
 	readonly property bool textonly_b:paramConfig_A.split("_")[0]==="T"
 	readonly property bool twoStates_b: paramConfig_A.split("_")[1]==="T"
 	readonly property string valueLabel_s:paramConfig_A.split("_")[2]
 	readonly property string unitLabel_s:paramConfig_A.split("_")[3]
-	 property real maxValue_r: 1
+	 property real maxValue_r: 10
 	 property real minValue_r: 0
 	property string valueText_s:""
 	 property real valueratio_r: 0.0
 	 property int fixedPoint_i:2
-	property bool readOnly_b:true
+	property bool readOnly_b:false
+	property bool isWhole_b:false
 	implicitHeight: {
 		if(textonly_b){
 			return T3Styling.fontSubSub_r+2*T3Styling.spacing_r
@@ -24,10 +25,11 @@ Rectangle {
 	}
 	implicitWidth: 300
 	color: T3Styling.cBgSub_c
-
-
-	readonly property real actualValue_r:
-	{minValue_r+valueratio_r*(maxValue_r-minValue_r)}
+	readonly property real actualValue_r:{
+		let val = minValue_r+valueratio_r*(maxValue_r-minValue_r)
+		if(isWhole_b) return Math.round(val);
+		else return val;
+	}
 	Text{
 		id:text_label
 		text:valueLabel_s
@@ -57,7 +59,8 @@ Rectangle {
 				return valueText_s;
 			}else{
 				let valString_s = actualValue_r.toString()
-				if(!valString_s.includes("."))valString_s+="."
+
+				if(!valString_s.includes(".")&&!isWhole_b)valString_s+="."
 				if(valString_s.includes(".")){
 					let valString_sA = valString_s.split(".");
 					valString_sA[1] = valString_sA[1].substr(0,1).padEnd(fixedPoint_i-1,"0");
@@ -171,8 +174,6 @@ Rectangle {
 			border.color: rect_tick.color
 		}
 	}
-
-
 	MouseArea{
 		id:mAre
 		anchors.fill: rect_outside
@@ -195,7 +196,6 @@ Rectangle {
 			let intervals_rA = [0];
 			rawValRatio_r = rawValRatio_r.toFixed(root.fixedPoint_i);
 			root.valueratio_r = rawValRatio_r;
-
 		}
 	}
 }

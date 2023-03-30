@@ -15,12 +15,10 @@
         <file>T3ParamUnit.qml</file>
         <file>T3Button.qml</file>
         <file>T3CTCMainMenu.qml</file>
-        <file>T3CTCTestInterface.qml</file>
         <file>T3ParamUnitGroup.qml</file>
         <file>T3Text.qml</file>
         <file>T3KM.qml</file>
         <file>T3SegDisplay.qml</file>
-        <file>T3Tumbler.qml</file>
         <file>T3NM.qml</file>
         <file>T3NC.qml</file>
         <file>T3NCPid.qml</file>

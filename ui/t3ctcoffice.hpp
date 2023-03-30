@@ -1,10 +1,7 @@
 #ifndef T3CTCOFFICE_HPP
 #define T3CTCOFFICE_HPP
-#include <QtCore>
-using MODU_ARGS_REF
-	= const std::tuple<const std::function<QVariant(const QString, const QString, const QJsonArray*)>*
-	  , const std::function<void(const QString, const QString, QJsonArray*, const QVariant)>*
-	  ,  QJsonArray*, QJsonArray*, QJsonArray*>*;
+#include "t3prophelper.h"
+
 class T3CTCOffice {
   public:
 	static bool connectedToTrackController;
@@ -24,9 +21,10 @@ class T3CTCOffice {
 	static void discardDispatchRequest(int index, QJsonArray* queue);
 	static QList<QJsonObject> popFromDispatchQueueAtTime(QJsonArray* queue, QTime currTime);
 	static QJsonArray searchPathsFromMetaInfo(const QJsonArray dispatchMetaInfo, MODU_ARGS_REF argsref);
-	static void writeToPlcInputFromMetaInfo(const QString blockId, const QJsonArray* metaInfo,  MODU_ARGS_REF argsref);
+	static void writeToPlcInputFromMetaInfo(const QString blockId, const QJsonArray metaInfo,  MODU_ARGS_REF argsref);
 	static QJsonArray readPlcInputToMetaInfo(const QString blockId,  MODU_ARGS_REF argsref);
 	static QJsonArray searchPathForAuthority(const QString originBlock, const QString destiBlock,  MODU_ARGS_REF argsref);
+	static void toggleConnection(bool newConnectionState, MODU_ARGS_REF argsref);
   private:
 	static void setAuthorityFromPath(const QJsonArray* authorityPath, bool b,  MODU_ARGS_REF argsref);
 	static QList<QList<QString>> searchPaths (const QString originBlockId, const QString destBlockId, QSet<QString> pathSet
@@ -380,15 +378,15 @@ inline QJsonArray T3CTCOffice::searchPathsFromMetaInfo(const QJsonArray dispatch
 	return ret;
 }
 
-inline void T3CTCOffice::writeToPlcInputFromMetaInfo(const QString blockId, const QJsonArray *metaInfo,  MODU_ARGS_REF argsref) {
+inline void T3CTCOffice::writeToPlcInputFromMetaInfo(const QString blockId, const QJsonArray metaInfo,  MODU_ARGS_REF argsref) {
 	//metaInfo [maintananceMode,suggestedSpeed,switchPosition,authorityTo]
-	if(metaInfo->size() != 4
-			|| !metaInfo->at(0).isBool()
-			|| !metaInfo->at(1).isDouble()
-			|| !metaInfo->at(2).isBool()
-			|| !metaInfo->at(3).isString())
+	if(metaInfo.size() != 4
+			|| !metaInfo.at(0).isBool()
+			|| !metaInfo.at(1).isDouble()
+			|| !metaInfo.at(2).isBool()
+			|| !metaInfo.at(3).isString())
 		qFatal("T3CTCOffice::writeToPlcInputFromMetaInfo() -> meta information incorrect.");
-	QString authorityTo = metaInfo->at(3).toString();
+	QString authorityTo = metaInfo.at(3).toString();
 	QJsonArray authorityPath;
 	//if current requested new authority is not empty, clear the authority for related blocks
 	if(authorityTo != "__" && !authorityTo.isEmpty()) {
@@ -404,19 +402,19 @@ inline void T3CTCOffice::writeToPlcInputFromMetaInfo(const QString blockId, cons
 		setAuthorityFromPath(&authorityPath, true, argsref);
 	}
 	//set authority, commanded speed, etc ONLY for current block
-	QString CTCPLCIO = (*std::get<0>(*argsref))(blockId, "COM[CTC|KC]_CTCPLCIO", std::get<3>(*argsref)).toString();
+	QString CTCPLCIO = GET_TRACKVAR_F(blockId, "COM[CTC|KC]_CTCPLCIO", argsref).toString();
 	{
 		Q_ASSERT(CTCPLCIO.size() == 32);
 		CTCPLCIO[0] =  '1';//if sent always connected assumed
-		CTCPLCIO[1] = metaInfo->at(0).toBool() ? '1' : '0';
+		CTCPLCIO[1] = metaInfo.at(0).toBool() ? '1' : '0';
 		//authority is handled from previous step
-		QString truncatedSuggestedSpeed = QString::number(static_cast<uint8_t>(metaInfo->at(1).toDouble()), 2).rightJustified(8, '0');
+		QString truncatedSuggestedSpeed = QString::number(static_cast<uint8_t>(metaInfo.at(1).toDouble()), 2).rightJustified(8, '0');
 		for(uint i = 9; i >= 2; --i) {
 			CTCPLCIO[i] = truncatedSuggestedSpeed[i - 2];
 		}
-		CTCPLCIO[10] =  metaInfo->at(2).toBool() ? '1' : '0';
+		CTCPLCIO[10] =  metaInfo.at(2).toBool() ? '1' : '0';
 	}
-	(*std::get<1>(*argsref))(blockId, "COM[CTC|KC]_CTCPLCIO", std::get<3>(*argsref), CTCPLCIO);
+	SET_TRACKVAR_F(blockId, "COM[CTC|KC]_CTCPLCIO", CTCPLCIO, argsref);
 }
 
 inline QJsonArray T3CTCOffice::readPlcInputToMetaInfo(const QString blockId, MODU_ARGS_REF argsref) {
@@ -429,7 +427,7 @@ inline QJsonArray T3CTCOffice::readPlcInputToMetaInfo(const QString blockId, MOD
 		truncatedSuggestedSpeed[i - 2] = CTCPLCIO[i];
 	}
 	std::get<0>(metaInfoValue) = CTCPLCIO[1] == '1';
-	std::get<1>(metaInfoValue) = truncatedSuggestedSpeed.toInt();
+	std::get<1>(metaInfoValue) = truncatedSuggestedSpeed.toInt(nullptr, 2);
 	std::get<2>(metaInfoValue) = CTCPLCIO[10] == '1';
 	std::get<3>(metaInfoValue) = AUTHPATH_splitted.last();
 	return QJsonArray{std::get<0>(metaInfoValue), std::get<1>(metaInfoValue), std::get<2>(metaInfoValue), std::get<3>(metaInfoValue)};
@@ -449,6 +447,16 @@ inline QJsonArray T3CTCOffice::searchPathForAuthority(const QString originBlock,
 			currMinInd = i;
 	}
 	return paths.at(currMinInd).toArray();
+}
+
+inline void T3CTCOffice::toggleConnection(bool newConnectionState, MODU_ARGS_REF argsref) {
+	for(const QJsonValue& currLine : qAsConst(*std::get<3>(*argsref))) {
+		for(auto& blockId : currLine.toObject().keys()) {
+			QString CTCPLCIO = 	(*std::get<0>(*argsref))(blockId, "COM[CTC|KC]_CTCPLCIO", std::get<3>(*argsref)).toString();
+			CTCPLCIO[0] = newConnectionState ? '1' : '0';
+			(*std::get<1>(*argsref))(blockId, "COM[CTC|KC]_CTCPLCIO", std::get<3>(*argsref), CTCPLCIO);
+		}
+	}
 }
 
 

@@ -23,7 +23,9 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 HEADERS += \
 	t3ctcoffice.hpp \
 	t3database.hpp \
+	t3prophelper.h \
 	t3trackcontroller.hpp \
 	t3trackmodel.hpp \
 	t3traincontroller.hpp \
-	t3trainmodel.hpp
+	t3trainmodel.hpp \
+	t3unittest.hpp

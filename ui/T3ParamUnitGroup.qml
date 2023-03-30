@@ -6,14 +6,14 @@ Item {
 	implicitWidth: 200
 	readonly property real paintedHeight_r:{
 		let sliderCount_i = model_A.filter(it_s=>it_s.split("_")[0]!=="T").length
-		console.log(sliderCount_i)
+		//console.log(sliderCount_i)
 		let textCount_i = model_A.length;
 		let spacingCount_i = model_A.length*3+sliderCount_i;
 		let marginCount_i = sliderCount_i+1;
 		let res_r =  textCount_i*T3Styling.fontSubSub_r
 				+spacingCount_i*T3Styling.spacing_r
 				+ marginCount_i*T3Styling.margin_r;
-		console.log(res_r);
+		//console.log(res_r);
 		return res_r;
 	}
 

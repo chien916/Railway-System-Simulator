@@ -26,7 +26,6 @@ Item {
 		if(0.3>velocityRatio_r){
 			lastStateIsLow_b = true;
 			isTransitioning_b = false;
-			console.log("1")
 		}
 		else if(0.4<velocityRatio_r&&velocityRatio_r<0.5){
 			if(!isTransitioning_b){

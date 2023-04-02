@@ -36,7 +36,7 @@ Item {
 		anchors{
 			fill:parent
 		}
-		radius: T3Styling.margin_r
+		//radius: T3Styling.margin_r
 		color: T3Styling.cBgSub_c
 
 

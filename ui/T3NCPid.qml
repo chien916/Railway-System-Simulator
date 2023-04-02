@@ -2,35 +2,37 @@ import QtQuick 2.12
 
 Item {
 	id:root
-	implicitHeight: item_canvas.unitHeight_r*3+T3Styling.spacing_r*4
+	implicitHeight: item_canvas.unitHeight_r*2+T3Styling.spacing_r*3
 	implicitWidth: 500
 	property real r_r:1.0
 	property real y_r:1.0
 	property real e_r:1.0
 	property real p_r:1.0
 	property real i_r:1.0
-	property real d_r:1.0
 	property real u_r:1.0
-//	onData_OChanged: {
-//		if(load_rInPid.status !==Loader.Ready
-//				||load_eInPid.status !==Loader.Ready
-//				||load_pInPid.status !==Loader.Ready
-//				||load_iInPid.status !==Loader.Ready
-//				||load_dInPid.status !==Loader.Ready
-//				||load_uInPid.status !==Loader.Ready
-//				||load_yInPid.status !==Loader.Ready)
-//			return;
-//		load_rInPid.item.value_s = data_O["r_r"];
-//		load_eInPid.item.value_s = data_O["e_r"];
-//		load_pInPid.item.value_s = data_O["p_r"];
-//		load_iInPid.item.value_s = data_O["i_r"];
-//		load_dInPid.item.value_s = data_O["d_r"];
-//		load_uInPid.item.value_s = data_O["u_r"];
-//		load_yInPid.item.value_s = data_O["y_r"];
-//	}
 	Rectangle{
+		id:rect_bg
 		anchors.fill: parent
 		color: T3Styling.cFgSubSub_c
+		SequentialAnimation{
+			running: true
+			loops:Animation.Infinite
+			PropertyAnimation{
+				target: rect_bg
+				property: "color"
+				from:T3Styling.cFgSubSub_c
+				to:T3Styling.cBgMain_c
+				duration: 1500
+			}
+			PropertyAnimation{
+				target: rect_bg
+				property: "color"
+				from: T3Styling.cBgMain_c
+				to:T3Styling.cFgSubSub_c
+				duration: 1500
+			}
+		}
+
 		radius: T3Styling.lineWidth_r
 	}
 	Item{
@@ -44,62 +46,6 @@ Item {
 		Column{
 			anchors.fill: parent
 			spacing: T3Styling.spacing_r
-			Rectangle{
-				id:rect_row1
-				color: "transparent"
-				height:item_canvas.unitHeight_r
-				width: parent.width
-				Loader{
-					//id:arrow_1,1
-					anchors{
-						top:parent.top
-						bottom: parent.bottom
-						left:parent.left
-						leftMargin:
-							1*item_canvas.circleWidth_r
-							+2*item_canvas.rectangleWidth_r
-							+2*item_canvas.rowSpacing_r
-					}
-					width: item_canvas.rowSpacing_r
-					sourceComponent: comp_arrow
-					onLoaded:item.textContent_s = "↗"
-				}
-				Loader{
-					id:load_pInPid
-					anchors{
-						top:parent.top
-						bottom: parent.bottom
-						left:parent.left
-						leftMargin:
-							1*item_canvas.circleWidth_r
-							+2*item_canvas.rectangleWidth_r
-							+3*item_canvas.rowSpacing_r
-					}
-					width: item_canvas.rectangleWidth_r
-					sourceComponent: comp_rect
-					onLoaded: {
-						item.label_s = "P"
-						item.labelColor_c = T3Styling.cGreen_c
-						item.value_s = "N/A"
-						item.border_b = true
-					}
-				}
-				Loader{
-					//id:arrow_1,2
-					anchors{
-						top:parent.top
-						bottom: parent.bottom
-						left:parent.left
-						leftMargin:
-							1*item_canvas.circleWidth_r
-							+3*item_canvas.rectangleWidth_r
-							+3*item_canvas.rowSpacing_r
-					}
-					width: item_canvas.rowSpacing_r
-					sourceComponent: comp_arrow
-					onLoaded:item.textContent_s = "↘"
-				}
-			}
 			Rectangle{
 				id:rect_row2
 				color: "transparent"
@@ -217,7 +163,7 @@ Item {
 					width: item_canvas.rectangleWidth_r
 					sourceComponent: comp_rect
 					onLoaded: {
-						item.label_s = "I"
+						item.label_s = "P"
 						item.labelColor_c = T3Styling.cBlue_c
 						item.value_s = "N/A"
 						item.border_b = true
@@ -359,7 +305,7 @@ Item {
 					width: item_canvas.rectangleWidth_r
 					sourceComponent: comp_rect
 					onLoaded: {
-						item.label_s = "D"
+						item.label_s = "I"
 						item.labelColor_c = T3Styling.cYellow_c
 						item.value_s = "N/A"
 						item.border_b = true
@@ -403,6 +349,7 @@ Item {
 				width: item_canvas.rectangleWidth_r
 				radius: T3Styling.lineWidth_r
 				color: T3Styling.cBgMain_c
+
 				//border.width: T3Styling.lineWidth_r*0.5
 				//border.color:border_b?T3Styling.cBgSub_c:"transparent"
 				T3Text{
@@ -467,12 +414,10 @@ Item {
 		running: true
 		repeat: true
 		onTriggered: {
-//			console.log(load_rInPid.item.value_s)
 			load_rInPid.item.value_s = r_r;
 			load_eInPid.item.value_s = e_r;
-			load_pInPid.item.value_s = p_r;
-			load_iInPid.item.value_s = i_r;
-			load_dInPid.item.value_s = d_r;
+			load_iInPid.item.value_s = p_r;
+			load_dInPid.item.value_s = i_r;
 			load_uInPid.item.value_s = u_r;
 			load_yInPid.item.value_s = y_r;
 		}

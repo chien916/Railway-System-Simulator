@@ -4,29 +4,81 @@ Item {
 	id:root
 	implicitWidth: 1150
 	implicitHeight: 350
-	//value views
-	property real kp_r:0.0
-	property real ki_r:0.5
-	property real kd_r:0.6
 
-	property real r_r:1.0
-	property real y_r:1.0
-	property real e_r:1.0
-	property real p_r:1.0
-	property real i_r:1.0
-	property real d_r:1.0
-	property real u_r:1.0
+	property bool engineerMode_b:false
+	property bool autoMode_b:true
+	property bool stationMode_b:false
+	property string trainId_s:cust_trainSelector.currValue_s
+	onTrainId_sChanged:{
+		rect_frontHelper.runAnimation();db2view();
+	}
+	Connections{
+		target: t3databaseQml
+		function onOnTrainObjectsChanged(){
+			db2view();
+		}
+	}
 
-	property string direction_s:"n"
-	property string power_s:"fwd"
-
-	signal onControlButtonClicked(string metaData)
-	signal onNavigationButtonClicked(string naviButtonName)
-
+	function db2view(){
+		if(trainId_s==="") return;
+		let metaInfo_A = t3databaseQml.nc_getMetaInfo(trainId_s);
+		cGau_power.currValue_n = metaInfo_A[18]
+		cGau_velocity.currValue_n = metaInfo_A[7]
+		cGau_accel.currValue_n = metaInfo_A[6]//set point
+		if(engineerMode_b){
+			if(reap_gain&&reap_gainValue){
+				reap_gain.itemAt(0).value_r =  metaInfo_A[11]
+				reap_gainValue.itemAt(0).value_r =  metaInfo_A[11]
+				reap_gain.itemAt(1).value_r =  metaInfo_A[12]
+				reap_gainValue.itemAt(1).value_r =  metaInfo_A[12]
+				cust_kpToggler.valueratio_r = metaInfo_A[11]
+				cust_kiToggler.valueratio_r = metaInfo_A[12]
+			}
+			pid_pid.r_r = metaInfo_A[6]
+			pid_pid.y_r = metaInfo_A[7]
+			pid_pid.e_r = metaInfo_A[8]
+			pid_pid.p_r = metaInfo_A[9]
+			pid_pid.i_r = metaInfo_A[10]
+			pid_pid.u_r = metaInfo_A[18]
+		}else{
+			cust_kpToggler.valueratio_r = metaInfo_A[0]?1:0
+			cust_kiToggler.valueratio_r = metaInfo_A[5]?1:0
+		}
+		if(reap_paramsToggle){
+			reap_paramsToggle.itemAt(0).valueratio_r= metaInfo_A[1]?1:0;
+			reap_paramsToggle.itemAt(1).valueratio_r= metaInfo_A[2]?1:0;
+			reap_paramsToggle.itemAt(2).valueratio_r= metaInfo_A[3]?1:0;
+			reap_paramsToggle.itemAt(3).valueratio_r= metaInfo_A[4]?1:0;
+		}
+		cust_speedSetpoint.valueratio_r = metaInfo_A[6]/100;
+		//station info
+		text_stationInfo.textContent_s = metaInfo_A[17];
+	}
+	function view2db(){
+		if(trainId_s==="") return;
+		if(engineerMode_b){
+			let kp_r = cust_kpToggler.actualValue_r ;
+			let ki_r = cust_kiToggler.actualValue_r;
+			t3databaseQml.nc_setKpAndKi(trainId_s,kp_r,ki_r);
+		}else if(!autoMode_b){
+			if(!reap_paramsToggle) return;
+			let metaInfo_A = [
+					cust_kpToggler.valueratio_r>0.5,
+					cust_kiToggler.valueratio_r>0.5,
+					reap_paramsToggle.itemAt(0).valueratio_r>0.5,
+					reap_paramsToggle.itemAt(1).valueratio_r>0.5,
+					reap_paramsToggle.itemAt(2).valueratio_r>0.5,
+					reap_paramsToggle.itemAt(3).valueratio_r>0.5,
+					cust_speedSetpoint.actualValue_r
+				];
+			console.log(metaInfo_A)
+			t3databaseQml.nc_setCtrlParams(trainId_s,metaInfo_A);
+		}
+	}
 	Rectangle{
 		anchors.fill: parent
 		color: T3Styling.cBgSub_c
-		radius: T3Styling.margin_r
+		//radius: T3Styling.margin_r
 		T3Text{
 			anchors.bottom: parent.bottom
 			anchors.right: parent.right
@@ -43,6 +95,20 @@ Item {
 		id:item_canvas
 		anchors.fill: parent
 		anchors.margins: T3Styling.margin_r
+		T3TrackSelectorBlock{
+			id:cust_trainSelector
+			isTrack_b:false
+			model_A: t3databaseQml?t3databaseQml.trainIds_QML:[[""]]
+			anchors{
+				top:parent.top
+				//top:sDis_segDisplay.bottom
+				//topMargin: T3Styling.margin_r
+				left:parent.left
+				bottom:parent.bottom
+				//margins: T3Styling.margin_r
+			}
+			width: root.width*0.05
+		}
 
 		Rectangle{
 			id:rect_leftScreen
@@ -50,23 +116,124 @@ Item {
 				top:parent.top
 				//top:sDis_segDisplay.bottom
 				//topMargin: T3Styling.margin_r
-				left:item_canvas.left
-//				bottom:item_canvas.bottom
-//				bottomMargin: T3Styling.margin_r*3+T3Styling.spacing_r*2
+				left:cust_trainSelector.right
+				leftMargin: T3Styling.margin_r
+				//				bottom:item_canvas.bottom
+				//				bottomMargin: T3Styling.margin_r*3+T3Styling.spacing_r*2
 			}
 			height: T3Styling.margin_r*2+colu_pidLabel00.height
-					+pid_pid.height+text_pidLabel1.height+T3Styling.spacing_r*4
-					+rect_seperatorBelowPid.height+text_menu.height
-//			+T3Styling.spacing_r*4
+					+pid_pid.height+text_pidLabel1.height
+			//			+T3Styling.spacing_r*4
 			width:item_canvas.width*0.5
 			radius: T3Styling.spacing_r
 			color: T3Styling.cBgMain_c
 			border.width: T3Styling.lineWidth_r
 			border.color: T3Styling.cFgSubSub_c
+
+			Grid{
+				rows:1
+				columns: 3
+				id:item_leftScreenNonEngineer
+				anchors{
+					left:parent.left
+					right:parent.right
+					top: item_stationInfo.bottom
+					bottom:parent.bottom
+				}
+				Behavior on height{PropertyAnimation{easing.type: Easing.OutCirc}}
+				anchors.margins: T3Styling.margin_r
+				opacity: !engineerMode_b?1:0
+				Behavior on opacity{PropertyAnimation{easing.type: Easing.OutCirc}}
+				property real unitWidth_r:(width-2*T3Styling.spacing_r)/3
+				//				T3NMCircularGauge{
+				//				}
+				Item{
+					height: parent.height
+					width: parent.unitWidth_r
+					T3NMCircularGauge{
+						id:cGau_power
+						y:-T3Styling.spacing_r
+						width:parent.width
+						height: parent.height
+						currValue_n: 0
+						fixedPoint_i: 0
+						stepsize_r: 0.1
+						tickmarkStepsize_r: 15
+						gaugeUnit_s: "kW"
+						maxValue_n:150
+						textOnly_b: false
+						toggle_b: false
+					}
+					T3Text{
+						id:text_powerLabel
+						width:parent.width
+						anchors.bottom: cGau_power.bottom
+						anchors.bottomMargin: -0.9*T3Styling.fontSub_r
+						textPixelSize_r: T3Styling.fontSubSub_r
+						textContent_s: "Power"
+						textColor_c: T3Styling.cFgMain_c
+					}
+				}
+				Item{
+					height: parent.height
+					width: parent.unitWidth_r
+					T3NMCircularGauge{
+						id:cGau_velocity
+						y:-T3Styling.spacing_r
+						width:parent.width
+						height: parent.height
+						stepsize_r: 0.1
+						fixedPoint_i: 0
+						currValue_n: 0
+						tickmarkStepsize_r: 5
+						maxValue_n: 50
+						textOnly_b: true
+						toggle_b: false
+					}
+					T3Text{
+						id:text_velocityLabel
+						width:parent.width
+						anchors.bottom: cGau_velocity.bottom
+						anchors.bottomMargin: -0.9*T3Styling.fontSub_r
+						textPixelSize_r: T3Styling.fontSubSub_r
+						textContent_s: "Velocity"
+						textColor_c: T3Styling.cFgMain_c
+					}
+				}
+				Item{
+					height: parent.height
+					width: parent.unitWidth_r
+					T3NMCircularGauge{
+						id:cGau_accel//but setpoint actually
+						y:-T3Styling.spacing_r
+						width:parent.width
+						height: parent.height
+						stepsize_r: 0.1
+						fixedPoint_i: 0
+						currValue_n: 0
+						tickmarkStepsize_r: 5
+						maxValue_n: 50
+						textOnly_b: true
+						toggle_b: false
+					}
+					T3Text{
+						id:text_accelLabel
+						width:parent.width
+						anchors.bottom: cGau_accel.bottom
+						anchors.bottomMargin: -0.9*T3Styling.fontSub_r
+						textPixelSize_r: T3Styling.fontSubSub_r
+						textContent_s: "Setpoint"
+						textColor_c: T3Styling.cFgMain_c
+					}
+				}
+
+			}
 			Item{
 				id:item_leftScreenCanvas
 				anchors.fill: parent
 				anchors.margins: T3Styling.margin_r
+				opacity: engineerMode_b?1:0
+				Behavior on opacity{PropertyAnimation{easing.type: Easing.OutCirc}}
 				Column{
 					id:colu_pidLabel00
 					anchors{
@@ -76,21 +243,22 @@ Item {
 						rightMargin:T3Styling.margin_r/2
 					}
 					spacing: T3Styling.lineWidth_r
-					height: T3Styling.fontSub_r*3+spacing*2
+					height: T3Styling.fontSub_r*2+spacing*1
 					Repeater{
+						id:reap_gain
 						model:
-							[["P - Propotional Gain",kp_r,T3Styling.cGreen_c]
-							,["I - Integral Gain",ki_r,T3Styling.cBlue_c]
-							,["D - Derivitive Gain",kd_r,T3Styling.cYellow_c]]
+							[["P - Propotional Gain",T3Styling.cGreen_c]
+							,["I - Integral Gain",T3Styling.cBlue_c]]
 						delegate:
 							Rectangle{
+							property real value_r:1.4
 							width: colu_pidLabel00.width
 							height: T3Styling.fontSub_r
 							color: "transparent"
 							T3Text{
 								anchors.fill: parent
 								textAlign_s: "left"
-								textColor_c: modelData[2]
+								textColor_c: modelData[1]
 								textContent_s: modelData[0].slice(0,1)
 							}
 							T3Text{
@@ -102,8 +270,8 @@ Item {
 							T3Text{
 								anchors.fill: parent
 								textAlign_s: "right"
-								textColor_c: modelData[1]===0?T3Styling.cRed_c:T3Styling.cGreen_c
-								textContent_s:modelData[1]===0?"OFF":"ON"
+								textColor_c: parent.value_r===0?T3Styling.cRed_c:T3Styling.cGreen_c
+								textContent_s:parent.value_r===0?"OFF":"ON"
 							}
 						}
 					}
@@ -117,14 +285,16 @@ Item {
 						leftMargin:T3Styling.margin_r/2
 					}
 					spacing: T3Styling.lineWidth_r
-					height: T3Styling.fontSub_r*3+spacing*2
+					height: T3Styling.fontSub_r*2+spacing*1
 					Repeater{
+						id:reap_gainValue
+
 						model:
-							[["Propotional Coefficient",kp_r]
-							,["Integral Coefficient",ki_r]
-							,["Derivitive Coefficient",kd_r]]
+							["Propotional Coefficient"
+							,"Integral Coefficient"]
 						delegate:
 							Rectangle{
+							property real value_r:1.2
 							width: colu_pidLabel00.width
 							height: T3Styling.fontSub_r
 							color: "transparent"
@@ -132,13 +302,13 @@ Item {
 								anchors.fill: parent
 								textAlign_s: "left"
 								textColor_c: T3Styling.cFgSub_c
-								textContent_s:modelData[0]
+								textContent_s:modelData
 							}
 							T3Text{
 								anchors.fill: parent
 								textAlign_s: "right"
-								textColor_c: modelData[1]===0?T3Styling.cFgSub_c:T3Styling.cFgMain_c
-								textContent_s: modelData[1]===0?"N/A":modelData[1]
+								textColor_c: parent.value_r===0?T3Styling.cFgSub_c:T3Styling.cFgMain_c
+								textContent_s:  parent.value_r===0?"N/A": parent.value_r.toFixed(2)
 							}
 						}
 
@@ -153,13 +323,6 @@ Item {
 						left: parent.left
 						right:parent.right
 					}
-					r_r:root.r_r
-					 y_r:root.y_r
-					 e_r:root.e_r
-					 p_r:root.p_r
-					 i_r:root.i_r
-					 d_r:root.d_r
-					 u_r:root.u_r
 				}
 				T3Text{
 					id:text_pidLabel1
@@ -170,351 +333,264 @@ Item {
 						right:parent.right
 					}
 					textColor_c: T3Styling.cFgSub_c
-					textContent_s: "R - Setpoint | E - Error | U - Output Power | U - Current Velocity"
-				}
-				Rectangle{
-					id:rect_seperatorBelowPid
-					anchors{
-						left:parent.left
-						right: parent.right
-						top:text_pidLabel1.bottom
-						topMargin: T3Styling.spacing_r
-					}
-					height: T3Styling.lineWidth_r
-					radius: height
-					color: T3Styling.cFgSubSub_c
+					textContent_s: "R - Setpoint | Y - Current Velocity | E - Error Value | U - Output Power"
 				}
 
-				T3Text{
-					id:text_menu
-					height: 0
-					visible: false
-					anchors{
-						top:rect_seperatorBelowPid.bottom
-						topMargin: T3Styling.spacing_r
-						left: parent.left
-						right:parent.right
-					}
-					textColor_c: T3Styling.cFgMain_c
-					textContent_s: "NO OPERATIONS"
-				}
-
-//				T3NMCircularGauge{
-//				}
+				//				T3NMCircularGauge{
+				//				}
 			}
+			Item{
+				id:item_stationInfo
+				width: parent.width
+				height: sAnim_animationStation.running?T3Styling.fontSub_r:0
+				Behavior on height{PropertyAnimation{easing.type: Easing.OutCirc}}
+				opacity: stationMode_b&&!engineerMode_b?1:0
+				Behavior on opacity{PropertyAnimation{easing.type: Easing.OutCirc}}
+				T3Text{
+					id:text_stationInfo
+					anchors.fill: parent
+					anchors.bottomMargin: -T3Styling.fontSubSub_r
+					anchors.topMargin: T3Styling.fontSubSub_r
+					visible: item_stationInfo.height===T3Styling.fontSub_r
+					textContent_s: "APPROACHING STATION: "
+					textColor_c: T3Styling.cBgMain_c
+				}
+				SequentialAnimation{
+					id:sAnim_animationStation
+					running:stationMode_b&&!engineerMode_b
+					loops: Animation.Infinite
+					alwaysRunToEnd: false
+					PropertyAnimation{
+						alwaysRunToEnd: true
+						target: text_stationInfo
+						property: "textColor_c"
+						from: T3Styling.cBgMain_c
+						to:T3Styling.cFgMain_c
+						duration: 1500
+					}
+					PropertyAnimation{
+						alwaysRunToEnd: true
+						target: text_stationInfo
+						property: "textColor_c"
+						from: T3Styling.cFgMain_c
+						to:T3Styling.cBgMain_c
+						duration: 1500
+					}
+				}
+			}
+
 		}
-		Grid{
-			id:grid_menuButtons
+
+		Column{
 			anchors{
-				top:rect_leftScreen.bottom
 				topMargin: T3Styling.spacing_r
-				bottom: parent.bottom
+				top:rect_leftScreen.bottom
 				left:rect_leftScreen.left
 				right:rect_leftScreen.right
+				bottom: parent.bottom
 			}
 			spacing: T3Styling.spacing_r
-			rows:1
-			columns:3
-			Repeater{
-				model:["◄","●","■"]
-				delegate:T3Button{
-					buttonLabel_s: modelData
-					width: (grid_menuButtons.width-(grid_menuButtons.spacing*grid_menuButtons.columns-1))
-						   /grid_menuButtons.columns
-					height: grid_menuButtons.height
-				}
+			property real unitHeight_r: (height-T3Styling.spacing_r)/2
+			T3ParamUnit{
+				id:cust_kpToggler
+				paramConfig_A: engineerMode_b?"F_F_Kp_":"F_T_Service Brake_";
+				isWhole_b: !engineerMode_b
+				maxValue_r: engineerMode_b?1:100
+				fixedPoint_i: 3
+				height: parent.unitHeight_r
+				width: parent.width
+
+			}
+			T3ParamUnit{
+				id:cust_kiToggler
+				paramConfig_A: engineerMode_b?"F_F_Ki_":"F_T_Emergency Brake_";
+				maxValue_r: 1
+				fixedPoint_i: 3
+				height: parent.unitHeight_r
+				width: parent.width
 			}
 
 		}
-//		Column{
-//			id:colu_coefficient
-//			anchors{
-//				top:rect_leftScreen.bottom
-//				topMargin: T3Styling.spacing_r
-//				bottom: parent.bottom
-//				left:rect_leftScreen.left
-//				right:rect_leftScreen.right
-//			}
-//			spacing:T3Styling.spacing_r
-//			Repeater{
-//				model:["F_F_Kp_","F_F_Ki_","F_F_Kd_"]
-//				delegate:	T3ParamUnit{
-//					anchors{
-//						left:parent.left
-//						right:parent.right
-//					}
-//					height: (colu_coefficient.height-colu_coefficient.spacing*2)/3
-//					paramConfig_A:modelData
-//		//			textonly_b: false
-//				}
-//			}
-//		}
-
-
-		T3NCDial{
-			id:dial_direction
-			anchors{
-				top:parent.top
-				//top:sDis_segDisplay.bottom
-				topMargin: T3Styling.spacing_r
-				left:rect_leftScreen.right
-				leftMargin: T3Styling.spacing_r
-			}
-			height: (parent.height-T3Styling.spacing_r)/2
-			width: height
-			ticks_nA: [0.64,0.82,1]
-			onCurrValue_nChanged: {
-				root.direction_s = ["fwd","neu","rev"][ticks_nA.indexOf(currValue_n)];
-			}
-		}
-
-		T3Text{
-			anchors{
-				top:parent.top
-				left:dial_direction.left
-				right: dial_direction.right
-			}
-			textPixelSize_r: T3Styling.fontSubSub_r
-			textContent_s: "Direction"
-			textColor_c: T3Styling.cFgSub_c
-		}
-
-		T3NCDial{
-			id:dial_power
-			anchors{
-				top:dial_direction.bottom
-				topMargin:  -T3Styling.spacing_r
-				left:rect_leftScreen.right
-				leftMargin: T3Styling.spacing_r
-				bottomMargin: T3Styling.spacing_r*1.5
-			}
-			ticks_nA: [0.64,0.73,0.82,0.911,1]
-			height: dial_direction.height
-			width: height
-			onCurrValue_nChanged: {
-				root.power_s = ["p2","p1","n","b1","b2"][ticks_nA.indexOf(currValue_n)];
-			}
-		}
-
-		T3Text{
-			anchors{
-				bottom:parent.bottom
-				left:dial_power.left
-				right: dial_power.right
-			}
-			textPixelSize_r: T3Styling.fontSubSub_r
-			textContent_s: "Power"
-			textColor_c: T3Styling.cFgSub_c
-		}
-
-		Rectangle{
-			id:rect_rightScreen
-			anchors{
-				//top:sDis_segDisplay.bottom
-				//topMargin: T3Styling.margin_r
-				top:parent.top
-				left: dial_power.right
-				bottom:parent.bottom
-			}
-			width: T3Styling.fontSubSub_r*3+T3Styling.margin_r*2
-			color: T3Styling.cBgMain_c
-			border.width: T3Styling.lineWidth_r
-			border.color: T3Styling.cFgSubSub_c
-			radius: T3Styling.spacing_r
-			Item{
-				anchors.fill: parent
-				anchors.margins: T3Styling.margin_r
-				Rectangle{
-					id:rect_directionLabel
-					anchors{
-						top:parent.top
-						left:parent.left
-						right:parent.right
-
-					}
-					color:"transparent"
-					height: dial_direction.height*0.7
-					T3Text{
-						anchors{
-							top:parent.top
-							left:parent.left
-							right:parent.right
-						}
-						textColor_c:
-							dial_direction.currValue_n
-							===dial_direction.ticks_nA[0]
-							?T3Styling.cFgMain_c: T3Styling.cFgSubSub_c
-						Behavior on textColor_c{PropertyAnimation{}}
-						textPixelSize_r: T3Styling.fontSubSub_r
-						textContent_s: "FWD"
-					}
-					T3Text{
-						anchors{
-							top:parent.top
-							bottom: parent.bottom
-							left:parent.left
-							right:parent.right
-						}
-						textColor_c:
-							dial_direction.currValue_n
-							===dial_direction.ticks_nA[1]
-							?T3Styling.cFgMain_c: T3Styling.cFgSubSub_c
-						Behavior on textColor_c{PropertyAnimation{}}
-						textPixelSize_r: T3Styling.fontSubSub_r
-						textContent_s: "NEU"
-					}
-					T3Text{
-						anchors{
-
-							left:parent.left
-							right:parent.right
-							bottom: parent.bottom
-						}
-						textColor_c:
-							dial_direction.currValue_n
-							===dial_direction.ticks_nA[2]
-							?T3Styling.cFgMain_c: T3Styling.cFgSubSub_c
-						Behavior on textColor_c{PropertyAnimation{}}
-						textPixelSize_r: T3Styling.fontSubSub_r
-						textContent_s: "REV"
-					}
-				}
-
-				Rectangle{
-					id:rect_powerLabel
-					anchors{
-						bottom:parent.bottom
-						left:parent.left
-						right:parent.right
-					}
-					color:"transparent"
-					height: dial_direction.height*0.8
-					Column{
-						id:colu_powerLabel
-						anchors{
-							top:parent.top
-							left:parent.left
-							right:parent.right
-							bottom:parent.bottom
-						}
-						Repeater{
-							model:["P2","P1","N","B1","B2"]
-							delegate: 		T3Text{
-								anchors{
-									left:parent.left
-									right:parent.right
-								}
-								height: colu_powerLabel.height/5
-								textColor_c:
-									dial_power.currValue_n
-									===dial_power.ticks_nA[index]
-									?T3Styling.cFgMain_c: T3Styling.cFgSubSub_c
-								Behavior on textColor_c{PropertyAnimation{}}
-								textPixelSize_r: T3Styling.fontSubSub_r
-								textContent_s: modelData
-							}
-						}
-					}
-				}
-			}
-		}
-
-
 		property int totalRow_n:8
 		Grid{
 			id:grid_buttons
 			anchors{
 				top:parent.top
-				left:rect_rightScreen.right
+				left:rect_leftScreen.right
 				leftMargin: T3Styling.margin_r
 				right:parent.right
-//				bottom:parent.bottom
-			}
-			spacing:T3Styling.spacing_r
-			rows: 5
-			columns:2
-			readonly property real unitWidth_r: (width-spacing*(columns-1))/columns
-			readonly property real unitHeight_r: (parent.height-spacing*(parent.totalRow_n-1))/parent.totalRow_n
-			height: unitHeight_r*rows+spacing*(rows-1)
-			Repeater{
-				model:["Turn On\nspace Heaters","Turn Off\nspace Heaters"
-					,"Open\nLeft Doors","Close\nLeft Doors"
-					,"Open\nRight Doors","Close\nRright Doors"
-					,"Turn On\nExterior Lights","Turn Off\nExterior Lights"
-					,"Turn On\nInterior Lights","Turn Off\nInterior Lights"
-				]
-				delegate:			T3Button{
-					width: parent.unitWidth_r
-					height:parent.unitHeight_r
-					buttonLabel_s: modelData.toUpperCase()
-					pressedColor_c: index%2==0
-									?T3Styling.cFgSub_c
-									:T3Styling.cBgMain_c
-					releasedColor_c: index%2==0
-									 ?T3Styling.cFgMain_c
-									 :T3Styling.cFgSubSub_c
-					buttonTextColor_c: index%2==0
-									   ?T3Styling.cBgMain_c
-									   :T3Styling.cFgMain_c
-					onButtonClicked: {
-						if(index===0) onControlButtonClicked("spaceHeater_on");
-						else if(index===1) onControlButtonClicked("spaceHeater_off");
-						else if(index===2) onControlButtonClicked("leftDoors_on");
-						else if(index===3) onControlButtonClicked("leftDoors_off");
-						else if(index===4) onControlButtonClicked("rightDoors_on");
-						else if(index===5) onControlButtonClicked("rightDoors_off");
-						else if(index===6) onControlButtonClicked("exteriorLights_on");
-						else if(index===7) onControlButtonClicked("exteriorLights_off");
-						else if(index===8) onControlButtonClicked("interiorLights_on");
-						else if(index===9) onControlButtonClicked("interiorLights_off");
-					}
-				}
-			}
-		}
-
-		Grid{
-			id:grid_delayButtons
-			anchors{
-				top:grid_buttons.bottom
-				topMargin: T3Styling.spacing_r
-				left:rect_rightScreen.right
-				leftMargin: T3Styling.margin_r
-				right:parent.right
-//				bottom:parent.bottom
+				bottom:grid_buttons2.top
+				bottomMargin: T3Styling.margin_r
+				//				bottom:parent.bottom
 			}
 			spacing:T3Styling.spacing_r
 			rows: 3
-			columns:1
+			columns:2
 			readonly property real unitWidth_r: (width-spacing*(columns-1))/columns
+			readonly property real unitHeight_r:(height-spacing*(rows-1))/rows
+			//height: unitHeight_r*rows+spacing*(rows-1)//Exterior Lights On
+			Repeater{
+				id:reap_paramsToggle
+				model:["F_T_Left Doors Opened_"
+					,"F_T_Right Doors Opened_"
+					,"F_T_Exterior Lights_"
+					,"F_T_Interior Lights_"
+				]
+				delegate:T3ParamUnit{
+					width: parent.unitWidth_r
+					height:parent.unitHeight_r
+					paramConfig_A: modelData
+					opacity: readOnly_b?0.5:1
+					Behavior on opacity{PropertyAnimation{ }}
+					readOnly_b: autoMode_b||engineerMode_b
+				}			/*T3Button{
+					property bool currState_b: false
+					width: parent.unitWidth_r
+					height:parent.unitHeight_r
+					buttonLabel_s:{
+						if(!currState_b) return modelData.replace("ONOFF","ON").replace("OPENCLOSE","OPEN")
+						else return modelData.replace("ONOFF","OFF").replace("OPENCLOSE","CLOSE")
+					}
+					releasedColor_c: !currState_b?T3Styling.cFgSubSub_c:pressedColor_c
+					onButtonClicked: {
+						currState_b = !currState_b
+					}
+				}*/
+			}
+		}
+		T3ParamUnit{
+			id:cust_speedSetpoint
+			anchors.bottom: grid_buttons.bottom
+			anchors.left: grid_buttons.left
+			anchors.right: grid_buttons.right
+			height:grid_buttons.unitHeight_r
+			maxValue_r: 100
+			paramConfig_A: "F_F_Speed Setpoint_Mph"
+			opacity: readOnly_b?0.5:1
+			Behavior on opacity{PropertyAnimation{easing.type: Easing.OutCirc}}
+			readOnly_b:autoMode_b||engineerMode_b
+		}
+
+
+		Grid{
+			id:grid_buttons2
+			anchors{
+				//top:grid_buttons.bottom
+				left:rect_leftScreen.right
+				leftMargin: T3Styling.margin_r
+				//topMargin: T3Styling.spacing_r
+				right:parent.right
+				bottom:parent.bottom
+			}
+			spacing:T3Styling.spacing_r
+			rows: 1
+			columns:reap_buttonBottoms.model.length
+			property real unitWidth_r: (width-spacing*(columns-1))/columns
+			Behavior on unitWidth_r{PropertyAnimation{easing.type: Easing.OutCirc}}
 			readonly property real unitHeight_r: (parent.height-spacing*(parent.totalRow_n-1))/parent.totalRow_n
 			height: unitHeight_r*rows+spacing*(rows-1)
 			Repeater{
-				model:[
-					"TURN OFF / ON\nAIDED TRAIN CONTROL"
-					,"ACTIVATE / DEACTIVATE\nSERVICE BRAKE"
-					,"ACTIVATE / DEACTIVATE\nEMERGENCY BRAKE"
-				]
+				id:reap_buttonBottoms
+				model:{
+					(engineerMode_b||!autoMode_b)?["Engr Mode","Auto Mode","Announce","Apply"
+												   ]:["Engr Mode","Auto Mode"]
+				}
 				delegate:			T3Button{
 					width: parent.unitWidth_r
 					height:parent.unitHeight_r
 					buttonLabel_s: modelData.toUpperCase()
-					delayButton_b: true
-					pressedColor_c: buttonLabel_s.indexOf("EMERGENCY")!==-1
-									?Qt.darker(T3Styling.cRed_c):T3Styling.cBgMain_c
-					releasedColor_c: buttonLabel_s.indexOf("EMERGENCY")!==-1
-									 ?(T3Styling.cRed_c):T3Styling.cFgSubSub_c
-					buttonTextColor_c:T3Styling.cFgMain_c
-					onButtonClicked:
-					{
-						if(index===0) onControlButtonClicked("atc_toggle");
-						else if(index===1) onControlButtonClicked("serviceBrake_toggle");
-						else if(index===2) onControlButtonClicked("emergencyBrake_toggle");
+					releasedColor_c: {
+						if(index===0) return engineerMode_b?T3Styling.cBgMain_c:Qt.darker(T3Styling.cBlue_c)
+						if(index===1) return autoMode_b?T3Styling.cBgMain_c:Qt.darker(T3Styling.cBlue_c)
+						if(index===3) return Qt.darker(T3Styling.cGreen_c)
+						else return T3Styling.cFgSubSub_c
+					}
+					onButtonClicked: {
+						if(index===0&&autoMode_b){
+							root.engineerMode_b = !root.engineerMode_b ;
+						}
+						else if(index===1){
+							if(engineerMode_b) return;
+							root.autoMode_b = !root.autoMode_b;
+						}
+						else if(index===2) stationMode_b = !stationMode_b // test
+						else if(index===3) view2db();
 					}
 				}
 			}
-
 		}
 
 
+		Rectangle{
+			id:rect_frontHelper
+			anchors{
+				left:cust_trainSelector.right
+				leftMargin: T3Styling.margin_r
+				top:parent.top
+				bottom: parent.bottom
+				right: parent.right
+			}
+			color:T3Styling.cBgSub_c
+			property bool initState_b:true
+			opacity: 1
+			border.width: T3Styling.lineWidth_r
+			border.color: T3Styling.cFgSubSub_c
+			radius: T3Styling.lineWidth_r
+			T3Text{
+				textContent_s: rect_frontHelper.initState_b?"T3 | TRAIN CONTROLLER\n\n\n":""
+				textColor_c:T3Styling.cFgMain_c
+				anchors.fill: parent
+				textPixelSize_r: T3Styling.fontSub_r
+				textBold_b: true
+				textLetterSpacing_r: T3Styling.fontSubSub_r*0.5
+			}
+			T3Text{
+				id:text_animationLabel
+				textContent_s: rect_frontHelper.initState_b?
+								   "\n\n\n\n\n\n\n\n\nSelect a train on the left to start":
+								   "Loading..."
+				textColor_c: rect_frontHelper.initState_b?T3Styling.cFgSub_c:T3Styling.cFgMain_c
+				anchors.fill: parent
+				textPixelSize_r: T3Styling.fontSubSub_r
+				textBold_b: false
+				textLetterSpacing_r: T3Styling.fontSubSub_r*0.1
+			}
+			SequentialAnimation{
+				id:animation_transition
+				alwaysRunToEnd: true
+				PropertyAnimation{
+					target:rect_frontHelper
+					property: "opacity"
+					from: 0
+					to:1
+					duration:target.initState_b?0:50
+					easing.type: Easing.OutCirc
+				}
+				PropertyAnimation{
+					id:mid_anim
+					target:rect_frontHelper
+					property: "opacity"
+					from: 1
+					to:1
+					duration:300
+				}
+				PropertyAnimation{
+					target:rect_frontHelper
+					property: "opacity"
+					from: 1
+					to:0
+					duration:100
+					easing.type: Easing.OutCirc
+				}
+			}
+			function runAnimation(){
+				mid_anim.duration = Math.random()*800
+				text_animationLabel.textContent_s = "Please Wait";
+				animation_transition.running = true;
+				initState_b = false;
+			}
+		}
+
 	}
+
 }

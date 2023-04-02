@@ -63,7 +63,7 @@
  * -> station on the left[26]
  * -> station on the right[27]
  * -> is underground[28]
- * -> has crossing gate[29]
+ * -> station id[29:31]
   */
 
 // let _CTCPLCIO =

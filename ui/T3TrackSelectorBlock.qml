@@ -6,11 +6,14 @@ Item {
 	implicitHeight: 500
 	property string currValue_s:""
 	property bool isTrack_b:true
-	readonly property variant model_A:{
-		if(isTrack_b) return t3databaseQml.trackVariablesObjects_QML;
-		else [t3databaseQml.trainObjects_QML]
+	property variant model_A:{
+		[["a","b"],["c","d"]]
 	}
-			property int currColumn_i:0
+		property int currColumn_i:0
+	onCurrColumn_iChanged: {
+		currValue_s = "";
+		lVie_listView.currentIndex = -1;
+	}
 		Rectangle{
 			anchors.fill: parent
 			color: T3Styling.cBgSub_c
@@ -37,9 +40,9 @@ Item {
 			ScrollBar.vertical: ScrollBar {
 					active: true
 			}
-			currentIndex: 0
+			currentIndex: -1
 			clip: true
-			model:Object.keys(model_A[currColumn_i])
+			model:root.model_A[currColumn_i]
 			delegate: Item{
 				height: 20
 				width: root.width
@@ -56,7 +59,7 @@ Item {
 						radius: T3Styling.spacing_r
 						T3Text{
 							anchors.fill: parent
-							textContent_s:modelData.split("_").join(" ")
+							textContent_s:modelData
 							textColor_c: lVie_listView.currentIndex===index?T3Styling.cBgMain_c:T3Styling.cFgSub_c
 						}
 					}
@@ -74,7 +77,7 @@ Item {
 			anchors{
 				bottom:parent.bottom
 			}
-			visible: root.isTrack_b
+			visible: root.model_A.length>1
 			height: root.isTrack_b?T3Styling.margin_r:0
 			width: (root.width-T3Styling.spacing_r)/2
 			buttonLabel_s: "←"
@@ -85,7 +88,7 @@ Item {
 				bottom:parent.bottom
 			}
 			x:width+T3Styling.spacing_r
-			visible: root.isTrack_b
+			visible: root.model_A.length>1
 			height: root.isTrack_b?T3Styling.margin_r:0
 			width: (root.width-T3Styling.spacing_r)/2
 			buttonLabel_s: "→"

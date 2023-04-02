@@ -4,10 +4,13 @@
 
 class T3TrackModel {
   public:
-
+	static void placeTrain(const QString trainId, const QString blockId, bool isMovingForward, MODU_ARGS_REF argsref);
 	static void placeTrainFromDispatchRequest(const QList<QJsonObject>* requests, MODU_ARGS_REF argsref);
 	static void addTrackFromCsv(const QString filePath, QJsonObject* stationToIdMapObject, MODU_ARGS_REF argsref);
+	static QJsonArray getAllTrackIds(MODU_ARGS_REF argsref);
 	static QJsonArray getDisplayStrings(const QString blockId, MODU_ARGS_REF argsref);
+	static QJsonArray getIOMetaInfo(const QString blockId, MODU_ARGS_REF argsref);
+	static void setIOMetaInfo(const QString blockId, QJsonArray metaInfo, MODU_ARGS_REF argsref );
   private:
 
 };
@@ -143,7 +146,7 @@ inline void T3TrackModel::addTrackFromCsv(const QString filePath, QJsonObject* s
 			currBlockVarObj.insert("KM_TRAINONBLOCK", QString());
 			currBlockVarObj.insert("KM_HEATER", false);
 			currBlockVarObj.insert("KM_PEOPLEONSTATION", static_cast<uint16_t>(0));
-
+			currBlockVarObj.insert("KM_ENVTEMPERATURE", static_cast<uint16_t>(0));
 		}
 
 		currTrackConObj.insert(currLineSplitted.at(0), currBlockConObj);
@@ -178,6 +181,15 @@ inline void T3TrackModel::addTrackFromCsv(const QString filePath, QJsonObject* s
 	else
 		qFatal(fileToWriteLog.errorString().toUtf8());
 	fileToWriteLog2.close();
+}
+
+inline QJsonArray T3TrackModel::getAllTrackIds(MODU_ARGS_REF argsref) {
+	QJsonArray toRet;
+	for(const QJsonValue& currTrackLineObject : qAsConst(*std::get<2>(*argsref))) {//use track constants object
+		Q_ASSERT(currTrackLineObject.isObject() && currTrackLineObject.toObject().contains("blocksMap"));
+		toRet.push_back(QJsonArray::fromStringList(currTrackLineObject.toObject().value("blocksMap").toObject().keys()));
+	}
+	return toRet;
 }
 
 inline QJsonArray T3TrackModel::getDisplayStrings(const QString blockId, MODU_ARGS_REF argsref) {
@@ -235,9 +247,40 @@ inline QJsonArray T3TrackModel::getDisplayStrings(const QString blockId, MODU_AR
 	return QJsonArray::fromStringList(QStringList::fromVector(retRaw));
 }
 
+inline QJsonArray T3TrackModel::getIOMetaInfo(const QString blockId, MODU_ARGS_REF argsref) {
+	QString KMPLCIO = GET_TRACKVAR_F(blockId, "COM[KC|KM]_KMPLCIO", argsref).toString();
+	QVariantList metaInfo = {
+		static_cast<float>(GET_TRACKVAR_F(blockId, "KM_ENVTEMPERATURE", argsref).toUInt()),//enviroment temperature
+		//failture mode 1
+		static_cast<bool>(KMPLCIO[6] == '1'),
+		//failure mode 2
+		static_cast<bool>(KMPLCIO[7] == '1'),
+		//failure mode 3
+		static_cast<bool>(KMPLCIO[30] == '1')
+	};
+	return QJsonArray::fromVariantList(metaInfo);
+}
+
+inline void T3TrackModel::setIOMetaInfo(const QString blockId, QJsonArray metaInfo, MODU_ARGS_REF argsref) {
+	if(metaInfo.size() != 4
+			|| !metaInfo.at(0).isDouble()
+			|| !metaInfo.at(1).isBool()
+			|| !metaInfo.at(2).isBool()
+			|| !metaInfo.at(3).isBool())
+		qFatal("T3TrackModel::setIOMetaInfo() -> meta info bad format");
+	QString KMPLCIO = GET_TRACKVAR_F(blockId, "COM[KC|KM]_KMPLCIO", argsref).toString();
+	SET_TRACKVAR_F(blockId, "KM_ENVTEMPERATURE", static_cast<uint8_t>(qRound(metaInfo.at(0).toDouble())), argsref);
+	KMPLCIO[6] = metaInfo.at(1).toBool() ? '1' : '0';
+	KMPLCIO[7] = metaInfo.at(2).toBool() ? '1' : '0';
+	KMPLCIO[30] = metaInfo.at(3).toBool() ? '1' : '0';
+	SET_TRACKVAR_F(blockId, "COM[KC|KM]_KMPLCIO", KMPLCIO, argsref);
+}
 
 
-
+inline void T3TrackModel::placeTrain(const QString trainId, const QString blockId, bool isMovingForward, MODU_ARGS_REF argsref) {
+	QString trainOnBlockConcatStr = QString("%1_%2_0.5").arg(trainId, (isMovingForward ? "F" : "R"));//direction doesnt matter for now
+	SET_TRACKVAR_F(blockId, "KM_TRAINONBLOCK", trainOnBlockConcatStr, argsref);
+}
 
 inline void T3TrackModel::placeTrainFromDispatchRequest(const QList<QJsonObject> *poppedRequests, MODU_ARGS_REF argsref) {
 	for(const QJsonObject& currRequest : *poppedRequests) {
@@ -249,7 +292,7 @@ inline void T3TrackModel::placeTrainFromDispatchRequest(const QList<QJsonObject>
 		bool isForward = true;
 		QString trainOnBlockConcatStr = QString("%1_%2_0.0").arg(trainId).arg(isForward ? "F" : "R");
 		//place train on track
-		(*std::get<1>(*argsref))(origin, "KM_TRAINONBLOCK", std::get<3>(*argsref), trainOnBlockConcatStr);
+		SET_TRACKVAR_F(origin, "KM_TRAINONBLOCK", trainOnBlockConcatStr, argsref);
 	}
 }
 

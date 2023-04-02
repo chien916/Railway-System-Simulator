@@ -58,7 +58,7 @@ Item {
 	implicitWidth: 1200
 	Rectangle{
 		anchors.fill: parent
-		radius: T3Styling.margin_r
+		//radius: T3Styling.margin_r
 		color: T3Styling.cBgSub_c
 		T3Text{
 			anchors.bottom: parent.bottom
@@ -90,6 +90,7 @@ Item {
 	}
 	T3TrackSelectorBlock{
 		id:cust_trackSelector
+		model_A: t3databaseQml?t3databaseQml.trackIds_QML:[[""]]
 		anchors{
 			top:parent.top
 			//top:sDis_segDisplay.bottom

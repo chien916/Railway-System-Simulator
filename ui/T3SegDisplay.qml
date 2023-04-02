@@ -21,31 +21,34 @@ Item {
 	Text{
 		id:text_frontText
 		text:
-			(centered_b?("!".repeat
+			(centered_b?(" ".repeat
 						 (Math.floor((root.segCharCount_i-currContent_s.length)/2))
 						 + currContent_s
-						 +"!".repeat(Math.ceil((root.segCharCount_i-currContent_s.length)/2)))
-					   :currContent_s.padEnd(root.segCharCount_i,"!"))
+						 +" ".repeat(Math.ceil((root.segCharCount_i-currContent_s.length)/2)))
+					   :currContent_s.padEnd(root.segCharCount_i," "))
 		.substring(0,root.segCharCount_i)
-		.replace(/ /g,'!')
-		.substring(0,root.segCharCount_i)
-		font.family: "DSEG14 Classic"
+		.replace(/ /g,' ')
+		.substring(0,root.segCharCount_i).toUpperCase()
+		font.family: "Inter"
+		renderType: Text.NativeRendering
 		font.pixelSize: T3Styling.fontSubSub_r*1.4
 		color: T3Styling.cFgMain_c
 		anchors.fill: parent
 		horizontalAlignment: Text.AlignHCenter
 		verticalAlignment: Text.AlignVCenter
+		font.letterSpacing: T3Styling.lineWidth_r
 	}
-	Text{
-		text:"".padStart(root.segCharCount_i,"~")
-		font.family: "DSEG14 Classic"
-		font.pixelSize: T3Styling.fontSubSub_r*1.4
-		color: T3Styling.cFgMain_c
-		anchors.fill: parent
-		horizontalAlignment: Text.AlignHCenter
-		verticalAlignment: Text.AlignVCenter
-		opacity: 0.2
-	}
+//	Text{
+//		text:"".padStart(root.segCharCount_i,"~")
+//		font.family: "DSEG14 Classic"
+//		font.pixelSize: T3Styling.fontSubSub_r*1.4
+//		color: T3Styling.cFgMain_c
+//		renderType: Text.NativeRendering
+//		anchors.fill: parent
+//		horizontalAlignment: Text.AlignHCenter
+//		verticalAlignment: Text.AlignVCenter
+//		opacity: 0.2
+//	}
 	Timer{
 		property int counter_i: 0;
 		id:time_charTransition

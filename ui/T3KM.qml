@@ -7,7 +7,13 @@ Item {
 	property string blockId_s:cust_trackSelector.currValue_s
 	function view2db(){
 		if(blockId_s==="") return;
-
+		let metaInfo_A = [
+				cust_envTemp.actualValue_r,//env temp
+				butt_brokenRail.currState_b,//f1
+				butt_powerFailure.currState_b,//f2
+				butt_trackCircuit.currState_b//f3
+			]
+		t3databaseQml.km_setIOFromMetaInfo(blockId_s,metaInfo_A);
 	}
 	function db2view(){
 		if(blockId_s===""||!repe_dataFields) return;
@@ -15,16 +21,21 @@ Item {
 		for(let i = 0;i<displayString_sA.length;++i){
 			repe_dataFields.itemAt(i).stringToDisp_s = displayString_sA[i];
 		}
+
+		let metaInfo_A = t3databaseQml.km_getIOFromMetaInfo(blockId_s);
+		cust_envTemp.valueratio_r = metaInfo_A[0]/cust_envTemp.maxValue_r;
+		butt_brokenRail.currState_b = metaInfo_A[1];
+		butt_powerFailure.currState_b = metaInfo_A[2];
+		butt_trackCircuit.currState_b = metaInfo_A[3];
 	}
 	onBlockId_sChanged: {
 		db2view();
-
 	}
 	implicitHeight: 600
 	implicitWidth: 800
 	Rectangle{
 		anchors.fill: parent
-		radius: T3Styling.margin_r
+		//radius: T3Styling.margin_r
 		color: T3Styling.cBgSub_c
 		T3Text{
 			anchors.bottom: parent.bottom
@@ -56,6 +67,8 @@ Item {
 	}
 	T3TrackSelectorBlock{
 		id:cust_trackSelector
+		isTrack_b:false
+		model_A: t3databaseQml?t3databaseQml.trackIds_QML:[[""]]
 		anchors{
 			top:parent.top
 			//top:sDis_segDisplay.bottom

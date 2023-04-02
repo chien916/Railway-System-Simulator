@@ -12,8 +12,8 @@ using MODU_ARGS_REF
 #define GET_TRACKVAR_F(ID,PROP,ARGREF) (*std::get<0>(*ARGREF))(ID,PROP, std::get<3>(*ARGREF))
 #define GET_TRACKCON_F(ID,PROP,ARGREF) (*std::get<0>(*ARGREF))(ID,PROP, std::get<2>(*ARGREF))
 #define GET_TRAIN_F(ID,PROP,ARGREF) (*std::get<0>(*ARGREF))(ID,PROP, std::get<4>(*ARGREF))
-#define SET_TRACKVAR_F(ID,PROP,VALUE,ARGREF) (*std::get<1>(*ARGREF))(ID,PROP, std::get<3>(*ARGREF), VALUE);
-#define SET_TRAIN_F(ID,PROP,VALUE,ARGREF) (*std::get<1>(*ARGREF))(ID,PROP, std::get<4>(*ARGREF), VALUE);
+#define SET_TRACKVAR_F(ID,PROP,VALUE,ARGREF) (*std::get<1>(*ARGREF))(ID,PROP, std::get<3>(*ARGREF), VALUE)
+#define SET_TRAIN_F(ID,PROP,VALUE,ARGREF) (*std::get<1>(*ARGREF))(ID,PROP, std::get<4>(*ARGREF), VALUE)
 
 #define M2YARD_F(VAL) 1.90361f*static_cast<float>(VAL)
 #define KMH2MPH_F(VAL) 0.621371*static_cast<float>(VAL)
@@ -21,6 +21,8 @@ using MODU_ARGS_REF
 
 #define FIREBASE_URL "https://sprn2023-ece1140-default-rtdb.firebaseio.com/"
 #define INITIAL_LINE_CSV_DIR "C:/Users/YIQ25/Documents/Academics/ECE1140/Resources/"
+
+#define TRAINONBLOCK "KM_TRAINONBLOCK"
 
 
 

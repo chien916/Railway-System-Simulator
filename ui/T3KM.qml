@@ -29,7 +29,15 @@ Item {
 		butt_trackCircuit.currState_b = metaInfo_A[3];
 	}
 	onBlockId_sChanged: {
+		rect_frontHelper.runAnimation();
 		db2view();
+
+	}
+	Connections{
+		target: t3databaseQml
+		function onOnTrackVariablesObjectsChanged(){
+			db2view();
+		}
 	}
 	implicitHeight: 600
 	implicitWidth: 800
@@ -67,7 +75,7 @@ Item {
 	}
 	T3TrackSelectorBlock{
 		id:cust_trackSelector
-		isTrack_b:false
+		isTrack_b:true
 		model_A: t3databaseQml?t3databaseQml.trackIds_QML:[[""]]
 		anchors{
 			top:parent.top
@@ -268,7 +276,6 @@ Item {
 					releasedColor_c: currState_b?Qt.darker(T3Styling.cRed_c):T3Styling.cFgSubSub_c
 					onButtonClicked: {
 						currState_b = !currState_b;
-						view2db();
 					}
 				}
 				T3Button{
@@ -280,7 +287,7 @@ Item {
 					releasedColor_c: currState_b?Qt.darker(T3Styling.cRed_c):T3Styling.cFgSubSub_c
 					onButtonClicked: {
 						currState_b = !currState_b;
-						view2db();
+
 					}
 				}
 				T3Button{
@@ -292,7 +299,6 @@ Item {
 					releasedColor_c: currState_b?Qt.darker(T3Styling.cRed_c):T3Styling.cFgSubSub_c
 					onButtonClicked: {
 						currState_b = !currState_b;
-						view2db();
 					}
 				}
 
@@ -331,296 +337,75 @@ Item {
 		}
 
 	}
-	//	Rectangle{
-	//		id:rect_canvas
-	//		radius: T3Styling.margin_r
-	//		color: T3Styling.cBgSub_c
-	//		anchors{
-	//			left:parent.horizontalCenter
-	//			top:parent.top
-	//			bottom:parent.bottom
-	//			right:parent.right
-	//		}
-	//		//		Column{
-	//		//			anchors{
-	//		//				margins: T3Styling.margin_r
-	//		//				fill: parent
-	//		//			}
-	//		//			id:colu_allConfigs
-	//		//			Text{
-	//		//				text:"eet"
-	//		//			}
-	//		//		}
-	//		Column{
-	//			id:col_column
-	//			anchors{
-	//				top:parent.top
-	//				left:parent.left
-	//				right:parent.right
-	//				bottom:parent.bottom
-	//			}
-	//			clip:true
-	//			height: parent.height*0.3
-	//			anchors{
-	//				topMargin: T3Styling.margin_r
-	//				leftMargin: T3Styling.margin_r
-	//				rightMargin: T3Styling.margin_r
-	//				bottomMargin: T3Styling.margin_r*3
-	//			}
-	//			//			clip: true
-	//			spacing: T3Styling.spacing_r
-	//			T3ParamUnit{
-	//				id:cust_maintainanceMode
-	//				height:T3Styling.fontMain_r*1
-	//				maxValue_r: 1;
-	//				minValue_r: 0
-	//				fixedPoint_i: 2
-	//				readOnly_b:false
-	//				paramConfig_A:"F_T_Maintance Mode_"
-	//				width: col_column.width
-	//			}
-	//			Row{
-	//				width: col_column.width
-	//				height:T3Styling.fontMain_r*1
-	//				spacing: T3Styling.spacing_r
-	//				T3ParamUnit{
-	//					id:cust_speedLimit
-	//					opacity:cust_maintainanceMode.valueratio_r>0.5?0.8:0.5
-	//					Behavior on opacity{PropertyAnimation{easing.type: Easing.OutCirc}}
-	//					height:T3Styling.fontMain_r*1
-	//					maxValue_r: 100;
-	//					minValue_r: 0
-	//					fixedPoint_i: 2
-	//					readOnly_b: true
-	//					paramConfig_A:"F_F_Speed Limit_mph"
-	//					width: (parent.width-parent.spacing)/2
-	//				}
-	//				T3ParamUnit{
-	//					id:cust_suggestedSpeed
-	//					opacity:cust_maintainanceMode.valueratio_r>0.5?0.8:0.5
-	//					Behavior on opacity{PropertyAnimation{easing.type: Easing.OutCirc}}
-	//					height:T3Styling.fontMain_r*1
-	//					maxValue_r: 100;
-	//					minValue_r: 0
-	//					fixedPoint_i: 2
-	//					readOnly_b: true
-	//					paramConfig_A:"F_F_Suggested Speed_mph"
-	//					width: (parent.width-parent.spacing)/2
-	//				}
-	//			}
 
+	Rectangle{
+		id:rect_frontHelper
+		anchors{
+			left:cust_trackSelector.right
+			margins: T3Styling.margin_r
+			top:parent.top
+			bottom: parent.bottom
 
-	//			T3ParamUnit{
-	//				id:cust_commandedSpeed
-	//				opacity:cust_maintainanceMode.valueratio_r>0.5?1:0.5
-	//				Behavior on opacity{PropertyAnimation{easing.type: Easing.OutCirc}}
-	//				height:T3Styling.fontMain_r*1
-	//				maxValue_r: 100;
-	//				minValue_r: 0
-	//				fixedPoint_i: 2
-	//				readOnly_b: !cust_maintainanceMode.valueratio_r>0.5
-	//				paramConfig_A:"F_F_Commanded Speed_mph"
-	//				width: col_column.width
-	//			}
-	//			Item{
-	//				width: parent.width
-	//				height: T3Styling.spacing_r
-	//			}
-
-
-
-	//			Grid{
-	//				id:grid_dialTexts
-	//				rows:1
-	//				columns: 4
-	//				height: T3Styling.fontSubSub_r
-	//				width: parent.width
-	//				columnSpacing: 0
-	//				property real unitWidth_r:(width-columnSpacing*(columns-1))/columns
-	//				Repeater{
-	//					model:[" L Sig"," Switch"," Gate"," R Sig"]
-	//					delegate:	Item{
-	//						width: parent.unitWidth_r
-	//						height: T3Styling.fontSubSub_r
-	//						T3Text{
-	//							textContent_s: modelData
-	//							opacity: cust_maintainanceMode.valueratio_r>0.5?1:0.5
-	//							Behavior on opacity{PropertyAnimation{easing.type: Easing.OutCirc}}
-	//							anchors{
-	//								left: parent.left
-	//								top:parent.top
-	//								bottom:parent.bottom
-	//								right:parent.right
-	//							}
-	//							textColor_c: T3Styling.cFgSub_c
-	//							textPixelSize_r: T3Styling.fontSubSub_r
-	//							textBold_b: true
-	//							textAlign_s: "left"
-	//						}
-	//						T3Text{
-	//							textContent_s: {
-	//								if(index===0){//left switch
-	//									if(cust_leftSignalDial.ticks_nA.length===0)
-	//										return "N/A ";
-	//									else if(cust_leftSignalDial.currValue_n<=0)
-	//										return "RED "
-	//									else if(cust_leftSignalDial.currValue_n<=0.18)
-	//										return "YELLOW "
-	//									else if(cust_leftSignalDial.currValue_n<=0.36)
-	//										return "GREEN "
-	//									else return "???"
-	//								}else if(index===1){
-	//									if(cust_switchDial.ticks_nA.length===0)
-	//										return "N/A ";
-	//									else if(cust_switchDial.currValue_n<=0)
-	//										return "DOWN "
-	//									else if(cust_switchDial.currValue_n<=0.18)
-	//										return "AUTO "
-	//									else if(cust_switchDial.currValue_n<=0.36)
-	//										return "UP "
-	//									else return "???"
-	//								}else if(index===2){
-	//									if(cust_gateDial.ticks_nA.length===0)
-	//										return "N/A ";
-	//									else if(cust_gateDial.currValue_n===1)
-	//										return "CLOSED "
-	//									else if(cust_gateDial.currValue_n===0.82)
-	//										return "AUTO "
-	//									else if(cust_gateDial.currValue_n===0.64)
-	//										return "OPEN "
-	//									else return "???"
-	//								}else if(index===3){//left switch
-	//									if(cust_rightSignalDial.ticks_nA.length===0)
-	//										return "N/A ";
-	//									else if(cust_rightSignalDial.currValue_n===1)
-	//										return "RED "
-	//									else if(cust_rightSignalDial.currValue_n===0.82)
-	//										return "YELLOW "
-	//									else if(cust_rightSignalDial.currValue_n===0.64)
-	//										return "GREEN "
-	//									else return "???"
-	//								}
-	//								return "???";
-	//							}
-	//							opacity: cust_maintainanceMode.valueratio_r>0.5?1:0.5
-	//							Behavior on opacity{PropertyAnimation{easing.type: Easing.OutCirc}}
-	//							anchors{
-	//								left: parent.left
-	//								top:parent.top
-	//								bottom:parent.bottom
-	//								right:parent.right
-	//							}
-	//							textColor_c: {
-	//								if(textContent_s==="RED "||textContent_s==="CLOSED ") return T3Styling.cRed_c
-	//								else if(textContent_s==="YELLOW "||textContent_s==="DOWN "||textContent_s==="UP ") return T3Styling.cYellow_c
-	//								else if(textContent_s==="GREEN "||textContent_s==="OPEN ") return T3Styling.cGreen_c
-	//								else return T3Styling.cFgMain_c
-	//							}
-	//							textPixelSize_r: T3Styling.fontSubSub_r
-	//							textBold_b: true
-	//							textAlign_s: "right"
-	//						}
-	//					}
-	//				}
-	//			}
-
-	//			Grid{
-	//				id:grid_dials
-	//				rows:1
-	//				columns: 4
-	//				height: unitWidth_r
-	//				width: parent.width
-	//				columnSpacing: 0
-	//				property real unitWidth_r:(width-columnSpacing*(columns-1))/columns
-
-	//				T3NCDial{
-	//					id:cust_leftSignalDial
-	//					height: parent.unitWidth_r
-	//					width: parent.unitWidth_r
-	//					//anchors.horizontalCenter: parent.horizontalCenter
-	//					ticks_nA:direction_s.toLowerCase()!=="right"?[0,0.18,0.36]:[]
-	//					enabled_b:cust_maintainanceMode.valueratio_r>0.5
-	//				}
-	//				T3NCDial{
-	//					id:cust_switchDial
-	//					height: parent.unitWidth_r
-	//					width: parent.unitWidth_r
-	//					ticks_nA:[0,0.18,0.36]
-	//					enabled_b:cust_maintainanceMode.valueratio_r>0.5
-	//				}
-	//				T3NCDial{
-	//					id:cust_gateDial
-	//					height: parent.unitWidth_r
-	//					width: parent.unitWidth_r
-	//					ticks_nA: hasGate_b?[0.64,1]:[]
-	//					enabled_b:cust_maintainanceMode.valueratio_r>0.5
-	//				}
-	//				T3NCDial{
-	//					id:cust_rightSignalDial
-	//					height: parent.unitWidth_r
-	//					width: parent.unitWidth_r
-	//					ticks_nA:direction_s.toLowerCase()!=="left"?[0.64,0.82,1]:[]
-	//					enabled_b:cust_maintainanceMode.valueratio_r>0.5
-	//				}
-	//			}
-
-	//			Item{
-	//				width: parent.width
-	//				height: T3Styling.spacing_r*1.5
-	//			}
-
-	//			Row{
-	//				width: col_column.width
-	//				height:T3Styling.fontMain_r*1
-	//				spacing: T3Styling.spacing_r
-	//				property real unitWidth_r: (width-spacing*3)/4
-	//				T3ParamUnit{
-	//					id:cust_authTravelDirection
-	//					opacity:cust_maintainanceMode.valueratio_r>0.5?1:0.5
-	//					Behavior on opacity{PropertyAnimation{easing.type: Easing.OutCirc}}
-	//					height:T3Styling.fontMain_r*1
-	//					readOnly_b: !cust_maintainanceMode.valueratio_r>0.5
-	//					paramConfig_A:"F_T_Forward Auth_mph"
-	//					width: parent.unitWidth_r
-	//				}
-	//				T3ParamUnit{
-	//					id:cust_authSwitchDirection
-	//					opacity:cust_maintainanceMode.valueratio_r>0.5?1:0.5
-	//					Behavior on opacity{PropertyAnimation{easing.type: Easing.OutCirc}}
-	//					height:T3Styling.fontMain_r*1
-	//					readOnly_b: !cust_maintainanceMode.valueratio_r>0.5
-	//					paramConfig_A:"F_T_Up Auth_"
-	//					width: parent.unitWidth_r
-	//				}
-	//				T3ParamUnit{
-	//					id:cust_authNumberOfBlocks
-	//					opacity:cust_maintainanceMode.valueratio_r>0.5?1:0.5
-	//					Behavior on opacity{PropertyAnimation{easing.type: Easing.OutCirc}}
-	//					height:T3Styling.fontMain_r*1
-	//					readOnly_b: !cust_maintainanceMode.valueratio_r>0.5
-	//					maxValue_r: 100
-	//					fixedPoint_i: 2
-	//					isWhole_b: true
-	//					paramConfig_A:"F_F_Number Of Blocks Authorized_"
-	//					width: parent.unitWidth_r*2+parent.spacing
-	//				}
-	//			}
-	//		}
-	//		T3Button{
-	//			anchors{
-	//				bottom:rect_canvas.bottom
-	//				left:rect_canvas.left
-	//				//				right:rect_canvas.right
-	//				margins: T3Styling.margin_r
-	//			}
-	//			height: T3Styling.margin_r
-	//			width: (rect_canvas.width-T3Styling.margin_r*2)
-	//			buttonLabel_s: "APPLY"
-	//			onButtonClicked: {
-	//				view2db();
-	//				db2view();
-	//			}
-	//		}
-	//	}
-
+			right: parent.right
+		}
+		color:T3Styling.cBgSub_c
+		property bool initState_b:true
+		opacity: 1
+		border.width: T3Styling.lineWidth_r
+		border.color: T3Styling.cFgSubSub_c
+		radius: T3Styling.lineWidth_r
+		T3Text{
+			textContent_s: rect_frontHelper.initState_b?"T3 | TRACK MODEL\n\n\n":""
+			textColor_c:T3Styling.cFgMain_c
+			anchors.fill: parent
+			textPixelSize_r: T3Styling.fontSub_r
+			textBold_b: true
+			textLetterSpacing_r: T3Styling.fontSubSub_r*0.5
+		}
+		T3Text{
+			id:text_animationLabel
+			textContent_s: rect_frontHelper.initState_b?
+							   "\n\n\n\n\n\n\n\n\nSelect a track on the left to start":
+							   "Loading..."
+			textColor_c: rect_frontHelper.initState_b?T3Styling.cFgSub_c:T3Styling.cFgMain_c
+			anchors.fill: parent
+			textPixelSize_r: T3Styling.fontSubSub_r
+			textBold_b: false
+			textLetterSpacing_r: T3Styling.fontSubSub_r*0.1
+		}
+		SequentialAnimation{
+			id:animation_transition
+			alwaysRunToEnd: true
+			PropertyAnimation{
+				target:rect_frontHelper
+				property: "opacity"
+				from: 0
+				to:1
+				duration:target.initState_b?0:50
+				easing.type: Easing.OutCirc
+			}
+			PropertyAnimation{
+				id:mid_anim
+				target:rect_frontHelper
+				property: "opacity"
+				from: 1
+				to:1
+				duration:300
+			}
+			PropertyAnimation{
+				target:rect_frontHelper
+				property: "opacity"
+				from: 1
+				to:0
+				duration:100
+				easing.type: Easing.OutCirc
+			}
+		}
+		function runAnimation(){
+			mid_anim.duration = Math.random()*800
+			text_animationLabel.textContent_s = "Please Wait";
+			animation_transition.running = true;
+			initState_b = false;
+		}
+	}
 }

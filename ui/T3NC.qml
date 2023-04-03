@@ -10,7 +10,7 @@ Item {
 	property bool stationMode_b:false
 	property string trainId_s:cust_trainSelector.currValue_s
 	onTrainId_sChanged:{
-		rect_frontHelper.runAnimation();db2view();
+		rect_frontHelper.runAnimation();
 	}
 	Connections{
 		target: t3databaseQml
@@ -563,7 +563,7 @@ Item {
 					property: "opacity"
 					from: 0
 					to:1
-					duration:target.initState_b?0:50
+					duration:target.initState_b?0:300
 					easing.type: Easing.OutCirc
 				}
 				PropertyAnimation{
@@ -579,7 +579,7 @@ Item {
 					property: "opacity"
 					from: 1
 					to:0
-					duration:100
+					duration:300
 					easing.type: Easing.OutCirc
 				}
 			}

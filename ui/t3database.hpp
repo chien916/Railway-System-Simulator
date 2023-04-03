@@ -212,10 +212,13 @@ class T3Database: public QObject {
   public:
 	Q_INVOKABLE QJsonArray nm_getAllTrainIds();
 	Q_INVOKABLE void nm_removeTrain(const QString trainId);
+	Q_INVOKABLE void nm_setFailureOrBrake(const QString trainId, const int index, const bool value);
+	Q_INVOKABLE QJsonArray nm_getStringsFromMetaInfo(const QString trainId);
   signals:
 
   private:
 	void nm_iterate();
+
 	//====================================================
 	//==================TRAIN-CONTROLLER==================
 	//=====================铁道控制模型=====================
@@ -321,6 +324,7 @@ inline void T3Database::db_pull(unsigned int selector_in) {
 			qDebug() << currJsonTitleToPush << " written";
 		} else
 			throw std::exception(fileIO.errorString().toUtf8());
+		db_push(selector_in);
 	}
 }
 
@@ -465,6 +469,15 @@ inline void T3Database::nm_removeTrain(const QString trainId) {
 	Q_EMIT onTrainObjectsChanged();
 	db_push(TrainObjects);
 	Q_INVOKABLE void removeTrainFromCtc(const QString trainId);
+}
+
+inline void T3Database::nm_setFailureOrBrake(const QString trainId, const int index, const bool value) {
+	T3TrainModel::setFailureOrBrake(trainId, index, value, &MODU_ARGS);
+	db_push(TrainObjects);
+}
+
+inline QJsonArray T3Database::nm_getStringsFromMetaInfo(const QString trainId) {
+	return T3TrainModel::getStringsFromMetaInfo(trainId, &MODU_ARGS);
 }
 
 inline void T3Database::nm_iterate() {

@@ -86,17 +86,17 @@ inline void T3TrackController::processPlc(const QString blockId, QJSEngine *plcR
 inline QJsonArray T3TrackController::readPlcToMetaInfo(const QString blockId, MODU_ARGS_REF argsref) {
 	QString KCPLCIN = GET_TRACKVAR_F(blockId, "KC_KCPLCIN", argsref).toString();
 	QList<QVariant> metaInfo = {
-		KCPLCIN.at(1) == '1',
-		static_cast<float>(GET_TRACKCON_F(blockId, "speedLimit", argsref).toString().toUInt(nullptr, 2)),
-		static_cast<float>(GET_TRACKVAR_F(blockId, "COM[CTC|KC]_CTCPLCIO", argsref).toString().midRef(2, 8).toUInt(nullptr, 2)),
-		static_cast<float>(KCPLCIN.midRef(2, 8).toUInt(nullptr, 2)),
-		QString("red"),//left signal -> handles later
-		QString("up"),//switch -> handles later
-		KCPLCIN.at(13) == '1' ? "closed" : "open",
-		QString("red"),//right signal -> handles later
-		KCPLCIN.at(16) == '1',
-		KCPLCIN.at(17) == '1',
-		static_cast<float>(KCPLCIN.midRef(2, 8).toUInt(nullptr, 2))
+		KCPLCIN.at(1) == '1',//0-maintance mode
+		static_cast<float>(KMH2MPH_F(GET_TRACKCON_F(blockId, "speedLimit", argsref).toUInt())),//1-speed limit
+		static_cast<float>(KMH2MPH_F(GET_TRACKVAR_F(blockId, "COM[CTC|KC]_CTCPLCIO", argsref).toString().midRef(2, 8).toUInt(nullptr, 2))),//2-suggested speed
+		static_cast<float>(KMH2MPH_F(KCPLCIN.midRef(2, 8).toUInt(nullptr, 2))),//3-comanded speed
+		QString("red"),//4-left signal -> handles later
+		QString("up"),//5-switch -> handles later
+		KCPLCIN.at(13) == '1' ? "closed" : "open",//6-gate
+		QString("red"),//7-right signal -> handles later
+		KCPLCIN.at(16) == '1',//8-auth prev next
+		KCPLCIN.at(17) == '1',//9-auth up down
+		static_cast<float>(KCPLCIN.midRef(2, 8).toUInt(nullptr, 2))//10-auth block number
 	};
 	{
 		//left signal
@@ -200,7 +200,7 @@ inline void T3TrackController::writePlcFromMetaInfo(const QString blockId, const
 		//maintananceMode
 		KCPLCIN[1] = metaInfo.at(0).toBool() ? '1' : '0';
 		//gate
-		KCPLCIN[13] = metaInfo.at(6).toString() == "CLOSED" ? '1' : '0';
+		KCPLCIN[13] = metaInfo.at(6).toString() == "closed" ? '1' : '0';
 		//authority direction prev or next
 		KCPLCIN[16] = metaInfo.at(8).toBool() ? '1' : '0';
 		KCPLCIN[17] = metaInfo.at(9).toBool() ? '1' : '0';

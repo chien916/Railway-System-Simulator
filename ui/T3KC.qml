@@ -12,6 +12,12 @@ Item {
 	property string switchSide_s:"left"
 	property string direction_s:"bidirectional"
 	property string blockId_s:cust_trackSelector.currValue_s
+	Connections{
+		target: t3databaseQml
+		function onOnTrackVariablesObjectsChanged(){
+			db2view();
+		}
+	}
 	function view2db(){
 		if(blockId_s==="") return;
 		let metaInfo_A = [
@@ -29,30 +35,38 @@ Item {
 		t3databaseQml.kc_writePlcFromMetaInfo(blockId_s,metaInfo_A);
 		console.log(metaInfo_A);
 	}
-	function db2view(){
+	function db2view(includeIO_b){
 		if(blockId_s==="") return;
-		//handles operatables
+		//from here are the readonlys
 		let metaInfo_A = t3databaseQml.kc_readPlcToMetaInfo(blockId_s);
 		cust_maintainanceMode.valueratio_r = metaInfo_A[0]?1:0;
-		cust_speedLimit.valueratio_r = metaInfo_A[1]/100;
-		cust_suggestedSpeed.valueratio_r= metaInfo_A[2]/100;
-		if(metaInfo_A[3]==="red") cust_leftSignalDial.dialDialValue_r = 0
-		else if(metaInfo_A[3]==="yellow") cust_leftSignalDial.dialDialValue_r = 0.18
-		else if(metaInfo_A[3]==="green") cust_leftSignalDial.dialDialValue_r = 0.36
-		if(metaInfo_A[4]==="down") cust_switchDial.dialDialValue_r = 0
-		else if(metaInfo_A[4]==="auto") cust_switchDial.dialDialValue_r = 0.18
-		else if(metaInfo_A[4]==="up") cust_switchDial.dialDialValue_r = 0.36
-		if(metaInfo_A[5]==="closed") cust_gateDial.dialDialValue_r = 1
-		else if(metaInfo_A[5]==="auto") cust_gateDial.dialDialValue_r = 0.82
-		else if(metaInfo_A[5]==="open") cust_gateDial.dialDialValue_r = 0.64
-		if(metaInfo_A[6]==="red") cust_rightSignalDial.dialDialValue_r = 1
-		else if(metaInfo_A[6]==="yellow") cust_rightSignalDial.dialDialValue_r = 0.82
-		else if(metaInfo_A[6]==="green") cust_rightSignalDial.dialDialValue_r = 0.64
+		cust_speedLimit.valueratio_r = metaInfo_A[1]/cust_speedLimit.maxValue_r;
+		cust_suggestedSpeed.valueratio_r= metaInfo_A[2]/cust_suggestedSpeed.maxValue_r;
+		//from here are the i/o s
+		if(includeIO_b){
+			cust_commandedSpeed.valueratio_r=metaInfo_A[3]/cust_commandedSpeed.maxValue_r;//io!
+			if(metaInfo_A[4]==="red") cust_leftSignalDial.dialDialValue_r = 0;
+			else if(metaInfo_A[4]==="yellow") cust_leftSignalDial.dialDialValue_r = 0.18;
+			else if(metaInfo_A[4]==="green") cust_leftSignalDial.dialDialValue_r = 0.36;
+			if(metaInfo_A[5]==="down") cust_switchDial.dialDialValue_r = 0;
+			else if(metaInfo_A[5]==="auto") cust_switchDial.dialDialValue_r = 0.18;
+			else if(metaInfo_A[5]==="up") cust_switchDial.dialDialValue_r = 0.36;
+			if(metaInfo_A[6]==="closed") cust_gateDial.dialDialValue_r = 1;
+			else if(metaInfo_A[6]==="auto") cust_gateDial.dialDialValue_r = 0.82;
+			else if(metaInfo_A[6]==="open") cust_gateDial.dialDialValue_r = 0.64;
+			if(metaInfo_A[7]==="red") cust_rightSignalDial.dialDialValue_r = 1;
+			else if(metaInfo_A[7]==="yellow") cust_rightSignalDial.dialDialValue_r = 0.82;
+			else if(metaInfo_A[7]==="green") cust_rightSignalDial.dialDialValue_r = 0.64;
+			cust_authTravelDirection.valueratio_r = metaInfo_A[8]?1:0;
+			cust_authSwitchDirection.valueratio_r = metaInfo_A[9]?1:0;
+			cust_authNumberOfBlocks.valueratio_r = metaInfo_A[10]/cust_authNumberOfBlocks.maxValue_r;
+		}
 		//handles plc binaries
 		reap_plcbinaries.model = t3databaseQml.kc_getAllPlcBinaries(blockId_s)
 	}
 	onBlockId_sChanged: {
 		db2view();
+		rect_frontHelper.runAnimation();
 	}
 	implicitHeight: 500
 	implicitWidth: 1200
@@ -570,9 +584,80 @@ Item {
 			buttonLabel_s: "APPLY"
 			onButtonClicked: {
 				view2db();
-				db2view();
 			}
 		}
 	}
 
+	Rectangle{
+		id:rect_frontHelper
+		anchors{
+			left:cust_trackSelector.right
+			margins: T3Styling.margin_r
+			top:parent.top
+			bottom: parent.bottom
+
+			right: parent.right
+		}
+		color:T3Styling.cBgSub_c
+		property bool initState_b:true
+		opacity: 1
+		border.width: T3Styling.lineWidth_r
+		border.color: T3Styling.cFgSubSub_c
+		radius: T3Styling.lineWidth_r
+		T3Text{
+			textContent_s: rect_frontHelper.initState_b?"T3 | TRACK CONTROLLER\n\n\n":""
+			textColor_c:T3Styling.cFgMain_c
+			anchors.fill: parent
+			textPixelSize_r: T3Styling.fontSub_r
+			textBold_b: true
+			textLetterSpacing_r: T3Styling.fontSubSub_r*0.5
+		}
+		T3Text{
+			id:text_animationLabel
+			textContent_s: rect_frontHelper.initState_b?
+							   "\n\n\n\n\n\n\n\n\nSelect a track on the left to start":
+							   "Loading..."
+			textColor_c: rect_frontHelper.initState_b?T3Styling.cFgSub_c:T3Styling.cFgMain_c
+			anchors.fill: parent
+			textPixelSize_r: T3Styling.fontSubSub_r
+			textBold_b: false
+			textLetterSpacing_r: T3Styling.fontSubSub_r*0.1
+		}
+		SequentialAnimation{
+			id:animation_transition
+			alwaysRunToEnd: true
+			PropertyAnimation{
+				target:rect_frontHelper
+				property: "opacity"
+				from: target.initState_b?1:0
+				to:1
+				duration:50
+				easing.type: Easing.OutCirc
+			}
+			PropertyAnimation{
+				id:mid_anim
+				target:rect_frontHelper
+				property: "opacity"
+				from: 1
+				to:1
+				duration:300
+			}
+			PropertyAnimation{
+				target:rect_frontHelper
+				property: "opacity"
+				from: 1
+				to:target.initState_b?1:0
+				duration:100
+				easing.type: Easing.OutCirc
+			}
+		}
+		function runAnimation(){
+			mid_anim.duration = Math.random()*800
+			initState_b = root.blockId_s==="";
+			text_animationLabel.textContent_s =
+					initState_b?"\n\n\n\n\n\n\n\n\nSelect a track on the left to start":"Please Wait";
+
+			animation_transition.running = true;
+		}
+	}
 }

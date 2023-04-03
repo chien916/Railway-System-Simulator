@@ -175,11 +175,11 @@ Item {
 						anchors.margins: T3Styling.lineWidth_r
 						radius: width*0.5
 						color: {
-							if(index===0&&root.currSignal_s==="clear")
+							if(index===0&&root.currSignal_s==="green")
 								return T3Styling.cGreen_c
-							else if(index===1&&root.currSignal_s==="approach")
+							else if(index===1&&root.currSignal_s==="yellow")
 								return T3Styling.cYellow_c
-							else if(index===2&&root.currSignal_s==="stop")
+							else if(index===2&&root.currSignal_s==="red")
 								return T3Styling.cRed_c
 							else
 								return T3Styling.cFgSubSub_c
@@ -198,8 +198,5 @@ Item {
 	implicitHeight: 500
 	implicitWidth: 100
 	//for testing only
-	MouseArea{
-		anchors.fill: parent
-		onClicked: currSpeedLimit_i+=10
-	}
+
 }

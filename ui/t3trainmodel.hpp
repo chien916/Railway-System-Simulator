@@ -40,8 +40,7 @@ inline void T3TrainModel::createNewTrain(const QString trainId, const QJsonArray
 	//trainObject.insert(QString("velocity"), 0.0);
 	trainObject.insert(QString("NM_CREWCOUNT"), 1);
 	trainObject.insert(QString("NM_PASSANGERCOUNT"), 0);
-	trainObject.insert(QString("NM_AIRCON"), QString(""));
-	trainObject.insert(QString("NM_DESTINATION"), QString(""));
+	trainObject.insert(QString("NM_TEMPERATURE"), 0.0);
 	trainObject.insert(QString("NM_AUTOMODE"), true);
 	trainObject.insert(QString("COM[NC_NM]_EXTLIGHT"), false);
 	trainObject.insert(QString("COM[NC_NM]_INTLIGHT"), false);
@@ -142,16 +141,16 @@ inline QJsonArray T3TrainModel::getAllTrainIds(MODU_ARGS_REF argsref) {
 inline void T3TrainModel::setFailureOrBrake(const QString trainId, const int index, const bool value, MODU_ARGS_REF argsref) {
 	switch (index) {
 	case 0:
-		SET_TRACKVAR_F(trainId, "COM[NC_NM]_FAILURE0", value, argsref);
+		SET_TRAIN_F(trainId, "COM[NC_NM]_FAILURE0", value, argsref);
 		break;
 	case 1:
-		SET_TRACKVAR_F(trainId, "COM[NC_NM]_FAILURE1", value, argsref);
+		SET_TRAIN_F(trainId, "COM[NC_NM]_FAILURE1", value, argsref);
 		break;
 	case 2:
-		SET_TRACKVAR_F(trainId, "COM[NC_NM]_FAILURE2", value, argsref);
+		SET_TRAIN_F(trainId, "COM[NC_NM]_FAILURE2", value, argsref);
 		break;
 	case 3:
-		SET_TRACKVAR_F(trainId, "COM[NC_NM]_EBRAKE", value, argsref);
+		SET_TRAIN_F(trainId, "COM[NC_NM]_EBRAKE", value, argsref);
 		break;
 	default:
 		qFatal("T3TrainModel::setFailureOrBrake() -> index not recognized");
@@ -161,39 +160,117 @@ inline void T3TrainModel::setFailureOrBrake(const QString trainId, const int ind
 }
 
 inline QJsonArray T3TrainModel::getStringsFromMetaInfo(const QString trainId, MODU_ARGS_REF argsref) {
-	QVector<QVariant> metaInfo;
-	QString helper;
-
-	helper = GET_TRAIN_F(trainId, "NM_BLOCKID", argsref).toString();
-	helper = GET_TRACKCON_F(helper, "station", argsref).toString();
-	metaInfo[0] = "";//station info
-	if(helper != "") {
-
-		QString currStationString;
-		QVector<QStringRef> stationNameAndSides = helper.splitRef("_");
-		Q_ASSERT(stationNameAndSides.size() == 2);
-		currStationString += QString("STATION: ") + stationNameAndSides.at(0);
-		if(stationNameAndSides.at(1).contains("LR")) currStationString += " - BOTH SIDES";
+	QVariantList metaInfo;
+	{
+		//0 - left door
+		bool leftDoorOpened = GET_TRAIN_F(trainId, "COM[NC_NM]_LDOOR", argsref).toBool();
+		metaInfo.append(leftDoorOpened ? "OPENED" : "CLOSED");
 	}
-	metaInfo[0] = "";//left foor
-	metaInfo[0] = "";//right door
-	metaInfo[0] = "";//s brake
-	metaInfo[0] = "";//e brake
-	metaInfo[0] = "";//speed limt
-	metaInfo[0] = "";//signal
-	metaInfo[0] = "";//power in KW
-	metaInfo[0] = "";//velocity in mph
-	metaInfo[0] = "";//accel in ftsq2
-	metaInfo[0] = "";//train length in ft
-	metaInfo[0] = "";//train height
-	metaInfo[0] = "";//train width
-	metaInfo[0] = "";//train mass
-	metaInfo[0] = "";//cabin temp
-	metaInfo[0] = "";//ext light
-	metaInfo[0] = "";//int light
-	metaInfo[0] = "";//eng status
-	metaInfo[0] = "";//signal picki
-	metaInfo[0] = "";//brake status
+	{
+		//1- right door
+		bool rightDoorOpened = GET_TRAIN_F(trainId, "COM[NC_NM]_RDOOR", argsref).toBool();
+		metaInfo.append(rightDoorOpened ? "OPENED" : "CLOSED");
+	}
+	{
+		//2- service brake
+		bool sBrake = GET_TRAIN_F(trainId, "COM[NC_NM]_SBRAKE", argsref).toBool();
+		metaInfo.append(sBrake ? "APPLIED" : "RELEASED");
+	}
+	{
+		//3,4 - emergency brake
+		bool eBrake = GET_TRAIN_F(trainId, "COM[NC_NM]_EBRAKE", argsref).toBool();
+		metaInfo.append(eBrake ? "APPLIED" : "RELEASED");
+		metaInfo.append(eBrake);
+	}
+
+	const QString blockId = GET_TRAIN_F(trainId, "NM_BLOCKID", argsref).toString();
+	if(blockId == "")
+		qFatal("T3TrainController::getMetaInfo() -> BLOCK ID is empty.");
+	const QString BCNPLCOUT = GET_TRACKVAR_F(blockId, "COM[KC|KM]_BCNPLCOUT", argsref).toString();
+	//metaInfo.append(0);//unused
+	{
+		//5- speed limit
+		unsigned int speedLimit =  GET_TRACKCON_F(blockId, "speedLimit", argsref).toUInt();
+		metaInfo.append(speedLimit);
+	}
+
+	{
+		//6- light signal
+		unsigned int authorizedNumberBlock =  BCNPLCOUT.midRef(2, 8).toUInt(nullptr, 2);
+		if(authorizedNumberBlock > 5) metaInfo.append(QString("green"));
+		if(authorizedNumberBlock > 1) metaInfo.append(QString("yellow"));
+		else metaInfo.append(QString("red"));
+	}
+	{
+		//7- powert
+		float power  = GET_TRAIN_F(trainId, "NC_U", argsref).toFloat();
+		metaInfo.append(power);
+	}
+	{
+		//8- imperial velocity
+		float impVelocity  = KMH2MPH_F(GET_TRAIN_F(trainId, "NC_PREVY", argsref).toFloat());
+		metaInfo.append(impVelocity);
+	}
+	{
+		//9- imperial acceleration
+		float impAccel  = M2FOOT_F(GET_TRAIN_F(trainId, "NM_ACCELERATION", argsref).toFloat());
+		metaInfo.append(impAccel);
+	}
+	{
+		//10-length string
+		float length = M2FOOT_F(GET_TRAIN_F(trainId, "NM_LENGTH", argsref).toFloat());
+		metaInfo.append(QString::number(length, 'g', 3) + " FT");
+	}
+	{
+		//11 height string
+		float height = M2FOOT_F(GET_TRAIN_F(trainId, "NM_HEIGHT", argsref).toFloat());
+		metaInfo.append(QString::number(height, 'g', 3) + " FT");
+	}
+	{
+		//12-width string
+		float width = M2FOOT_F(GET_TRAIN_F(trainId, "NM_WIDTH", argsref).toFloat());
+		metaInfo.append(QString::number(width, 'g', 3) + " FT");
+	}
+	{
+		//13-mass string
+		float mass = (GET_TRAIN_F(trainId, "NM_MASS", argsref).toFloat());
+		metaInfo.append(QString::number(mass, 'g', 3) + " T");
+	}
+	{
+		//14,15 temp string - no conversion neede
+		float temperature = (GET_TRAIN_F(trainId, "NM_TEMPERATURE", argsref).toFloat());
+		metaInfo.append(QString::number(temperature, 'g', 3) + " F");
+		metaInfo.append(temperature);
+	}
+	{
+		//16-ext light string
+		bool extLight = (GET_TRAIN_F(trainId, "COM[NC_NM]_EXTLIGHT", argsref).toBool());
+		metaInfo.append(QString(extLight ? "ON" : "OFF"));
+	}
+	{
+		//17-int light string
+		bool intLight = (GET_TRAIN_F(trainId, "COM[NC_NM]_INTLIGHT", argsref).toBool());
+		metaInfo.append(QString(intLight ? "ON" : "OFF"));
+	}
+	{
+		//18,19-failure 1 string
+		bool f1 = (GET_TRAIN_F(trainId, "COM[NC_NM]_FAILURE0", argsref).toBool());
+		metaInfo.append(f1 ? "ERROR" : "OK");
+		metaInfo.append(f1);
+	}
+	{
+		//20,21 failure 2 string
+		bool f2 = (GET_TRAIN_F(trainId, "COM[NC_NM]_FAILURE1", argsref).toBool());
+		metaInfo.append(f2 ? "ERROR" : "OK");
+		metaInfo.append(f2);
+	}
+	{
+		//22,23-failure 3 string
+		bool f3 = (GET_TRAIN_F(trainId, "COM[NC_NM]_FAILURE2", argsref).toBool());
+		metaInfo.append(f3 ? "ERROR" : "OK");
+		metaInfo.append(f3);
+	}
+	return QJsonArray::fromVariantList(metaInfo);
 }
 
 

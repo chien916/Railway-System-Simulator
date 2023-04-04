@@ -11,6 +11,8 @@ class T3TrainController {
 	static void setBrake(const QString trainId, bool emergency, bool value, MODU_ARGS_REF argsref);
 	static void setCtrlParams(const QString trainId, QJsonArray metaInfo, MODU_ARGS_REF argsref);
 	static QJsonArray getMetaInfo(const QString trainId, MODU_ARGS_REF argsref);//does not include pid
+	static void updateControlSystemsOnAllTrains(QTime currentTime, MODU_ARGS_REF argsref);
+	static void updatePiOnAllTrains(MODU_ARGS_REF argsref);
 };
 
 /**
@@ -21,14 +23,14 @@ class T3TrainController {
  */
 inline void T3TrainController::pidIterate(QJsonObject *train) {
 //	//retrieve pid data from train database
-//	float r = train->value(QString("pid_r")).toDouble();
-//	float prev_e = train->value(QString("pid_prev_e")).toDouble();
-//	float prev_y = train->value(QString("pid_prev_y")).toDouble();
-//	float sum_e = train->value(QString("pid_sum_e")).toDouble();
-//	float dt = train->value(QString("pid_dt")).toDouble();
-//	float kp = train->value(QString("pid_kp")).toDouble();
-//	float ki = train->value(QString("pid_ki")).toDouble();
-//	float kd = train->value(QString("pid_kd")).toDouble();
+//	float r = currTrain.value(QString("pid_r")).toDouble();
+//	float prev_e = currTrain.value(QString("pid_prev_e")).toDouble();
+//	float prev_y = currTrain.value(QString("pid_prev_y")).toDouble();
+//	float sum_e = currTrain.value(QString("pid_sum_e")).toDouble();
+//	float dt = currTrain.value(QString("pid_dt")).toDouble();
+//	float kp = currTrain.value(QString("pid_kp")).toDouble();
+//	float ki = currTrain.value(QString("pid_ki")).toDouble();
+//	float kd = currTrain.value(QString("pid_kd")).toDouble();
 
 //	//calculate new values
 //	float e = r - prev_y;
@@ -115,31 +117,86 @@ inline QJsonArray T3TrainController::getMetaInfo(const QString trainId, MODU_ARG
 	return QJsonArray::fromVariantList(metaInfo);
 }
 
-/**
- * @brief T3TrainController::nc_controlSystemIterate
- * @param train
- * @param quintupleBlocks
- * TRAIN CONTROLLER子函数
- * 对于在当前铁轨块上的火车，利用铁轨块上的某些信息，自动切换火车非引擎相关的设施开关，例如内车灯，外车灯，空调等
- *
- * 内车灯：当时间在晚上的时候开启，白天的时候关闭
- * 外车灯：当火车进入隧道以后开启，在时间为晚上的时候开启，白天的时候关闭
- *
- * 此函数只修改当前铁轨块，和火车
- *
- * 使用条件：此函数只会在火车设施控制系统开启时被调用
- * 危殆条件处理 ：利用紧急制动立刻停止火车，开启所有车灯
- *
- */
-//inline void T3TrainController::ctrlSystIterate(QJsonObject *train, QJsonObject *currblockVariablesObject, const QJsonObject *currblockConstantsObject, const QTime currentTime) {
-//	//train id matching check
-//	//Q_ASSERT(quintupleBlocks.size() == 5);
-//	QStringList trainOnBlock = currblockVariablesObject->value("trainOnBlock").toString().split("_");
-//	Q_ASSERT(trainOnBlock.size() == 3);
-//	QString trainId = trainOnBlock.at(0);
-//	Q_ASSERT(trainId == train->value("id").toString());
-//	//properties needed
-//	bool isUnderground = currblockConstantsObject->value("underground").toBool();
-//	bool isNight = false;//TO-DO!! Implement time!
-//}
+inline void T3TrainController::updateControlSystemsOnAllTrains(QTime currentTime, MODU_ARGS_REF argsref) {
+	for(const QJsonValue currTrainRaw : qAsConst(*std::get<4>(*argsref))) {
+		QJsonObject currTrain = currTrainRaw.toObject();
+		QString trainId = currTrain.value("NM_ID").toString();
+		QString blockId = currTrain.value("NM_BLOCKID").toString();
+		QString BCNPLCOUT = GET_TRACKVAR_F(blockId, "COM[KC|KM]_BCNPLCOUT", argsref).toString();
+		//failure -> emergency brake activated!
+		if(currTrain.value("COM[NC_NM]_FAILURE0").toBool()
+				|| currTrain.value("COM[NC_NM]_FAILURE1").toBool()
+				|| currTrain.value("COM[NC_NM]_FAILURE2").toBool()) {
+			SET_TRAIN_F(trainId, "COM[NC_NM]_EBRAKE", true, argsref);
+		}
+		if(!currTrain.value("NM_AUTOMODE").toBool()) continue;
+		//light control
+		if(BCNPLCOUT.at(28) == '1' || currentTime < QTime(7, 00) || currentTime > QTime(19, 30)) { //if in tunnel, turn on interior light and exterior light
+			SET_TRAIN_F(trainId, "COM[NC_NM]_EXTLIGHT", true, argsref);
+			SET_TRAIN_F(trainId, "COM[NC_NM]_INTLIGHT", true, argsref);
+		} else {
+			SET_TRAIN_F(trainId, "COM[NC_NM]_EXTLIGHT", false, argsref);
+			SET_TRAIN_F(trainId, "COM[NC_NM]_INTLIGHT", false, argsref);
+		}
+		//station door control[time left]
+		if(BCNPLCOUT.at(26) == '1' || BCNPLCOUT.at(27) == '1') {
+			int secondsLeft = currTrain.value("COM[NC_NM]_SECLEFT").toInt();
+			if(secondsLeft >= 20 && currTrain.value("NC_PREVY").toDouble() < 2.0) {
+				if(BCNPLCOUT.at(26) == '1') SET_TRAIN_F(trainId, "COM[NC_NM]_LDOOR", true, argsref);
+				else SET_TRAIN_F(trainId, "COM[NC_NM]_LDOOR", false, argsref);
+				if(BCNPLCOUT.at(27) == '1') SET_TRAIN_F(trainId, "COM[NC_NM]_RDOOR", true, argsref);
+				else SET_TRAIN_F(trainId, "COM[NC_NM]_RDOOR", false, argsref);
+				SET_TRAIN_F(trainId, "COM[NC_NM]_SBRAKE", true, argsref);
+			} else if(secondsLeft <= 5 && secondsLeft != -1) {
+				SET_TRAIN_F(trainId, "COM[NC_NM]_RDOOR", false, argsref);
+				SET_TRAIN_F(trainId, "COM[NC_NM]_LDOOR", false, argsref);
+				SET_TRAIN_F(trainId, "COM[NC_NM]_SBRAKE", false, argsref);
+			}
+			secondsLeft -= 1;
+			SET_TRAIN_F(trainId, "COM[NC_NM]_SECLEFT", secondsLeft, argsref);
+		}
+
+	}
+}
+
+inline void T3TrainController::updatePiOnAllTrains(MODU_ARGS_REF argsref) {
+	for(const QJsonValue currTrainRaw : qAsConst(*std::get<4>(*argsref))) {
+		QJsonObject currTrain = currTrainRaw.toObject();
+		if(!currTrain.value("NM_AUTOMODE").toBool()) continue;
+		QString trainId = currTrain.value("NM_ID").toString();
+		QString blockId = currTrain.value("NM_BLOCKID").toString();
+		QString BCNPLCOUT = GET_TRACKVAR_F(blockId, "COM[KC|KM]_BCNPLCOUT", argsref).toString();
+		//retrieve pid data from train database
+		float r = currTrain.value(("NC_R")).toDouble();
+		//float prev_e = currTrain.value(("NC_PREVE")).toDouble();
+		float prev_y = currTrain.value(("NC_PREVY")).toDouble();
+		float sum_e = currTrain.value(("NC_SUME")).toDouble();
+		float dt = currTrain.value(("NC_DT")).toDouble();
+		float kp = currTrain.value(("NC_KP")).toDouble();
+		float ki = currTrain.value(("NC_KI")).toDouble();
+		if(currTrain.value("COM[NC_NM]_EBRAKE").toBool() || currTrain.value("COM[NC_NM]_SBRAKE").toBool()) {
+			if(r != 0)
+				SET_TRAIN_F(trainId, "NC_R", 0.0f, argsref);//force train to stop
+		}
+		if((BCNPLCOUT.at(26) == '1' || BCNPLCOUT.at(2) == '1') ) {//if at station
+			int secondsLeft = currTrain.value("COM[NC_NM]_SECLEFT").toInt();
+			if(secondsLeft == -1) {
+				SET_TRAIN_F(trainId, "COM[NC_NM]_SECLEFT", 30, argsref);//30 seconds of stop time
+				if(r != 0)
+					SET_TRAIN_F(trainId, "NC_R", 0.0f, argsref);//force train to stop
+			}
+		}
+
+		//	//calculate new values
+		float e = r - prev_y;
+		float P = kp * e;
+		float I = ki * sum_e * dt;
+		//float D = ki * (prev_e + e) * dt * 0.5;//trapozoidal integration
+		float u = P + I ;
+		SET_TRAIN_F(trainId, "NC_PREVE", e, argsref);
+		SET_TRAIN_F(trainId, "NC_U", u, argsref);
+	}
+}
+
+
 #endif // T3TRAINCONTROLLER_HPP

@@ -7,7 +7,7 @@ Item {
 	readonly property bool metadataReady:csvMetadataReady
 										 && tInp_dispatchFrom.customAcceptableInput
 										 && tInp_dispatchTo.acceptableInput
-	readonly property bool csvMetadataReady:tInp_dispatchAt.acceptableInput
+	readonly property bool csvMetadataReady:tInp_dispatchAt.customAcceptableInput
 											&& tInp_dispatchTrain.acceptableInput
 	readonly property variant trackConstantsObjects_OA: t3databaseQml.trackConstantsObjects_QML
 

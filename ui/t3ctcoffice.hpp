@@ -6,7 +6,6 @@ class T3CTCOffice {
   public:
 	static bool connectedToTrackController;
 	//DB-Related Operations
-
 	/**
 	 * Steps for dispatching process;
 	 *
@@ -458,6 +457,7 @@ inline void T3CTCOffice::toggleConnection(bool newConnectionState, MODU_ARGS_REF
 		}
 	}
 }
+
 
 
 

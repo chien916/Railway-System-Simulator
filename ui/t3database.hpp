@@ -137,13 +137,14 @@ class T3Database: public QObject {
 		qFatal(QString("T3Database::SET_PROP(%1,%2) failed").arg(blockId).arg(prop).toLocal8Bit());
 	};
 
+
+
+  public:
 	const std::tuple<const std::function<QVariant(const QString, const QString, const QJsonArray*)>*
 	, const std::function<void(const QString, const QString, QJsonArray*, const QVariant)>*
 	,  QJsonArray*, QJsonArray*, QJsonArray*> MODU_ARGS  = {
 		&GET_PROP, &SET_PROP, &trackConstantsObjects, &trackVariablesObjects, &trainObjects
 	};
-
-  public:
 	Q_INVOKABLE void db_toggle(bool  enableFirebase, bool enableFile);
 	Q_INVOKABLE void db_push(unsigned int selector_in = 0b11111111);
 	Q_INVOKABLE void db_pull(unsigned int selector_in = 0b11111111);
@@ -185,10 +186,11 @@ class T3Database: public QObject {
 	Q_INVOKABLE void kc_writePlcFromMetaInfo(const QString blockId, const QJsonArray metaInfo);
 	Q_INVOKABLE QJsonArray kc_getAllPlcBinaries(const QString blockId);
 	Q_INVOKABLE void kc_processPlc(const QString blockId);
-  signals:
-  private:
 	QJSEngine plcRuntime;
 	QJSValue plcFunction;
+  signals:
+  private:
+
 	void kc_iterate();
 	//====================================================
 	//=====================TRACK-MODEL====================
@@ -236,18 +238,21 @@ class T3Database: public QObject {
 	//=========================其他========================
 	//====================================================
   private:
-	QTime currentTime;
+
 	uint8_t timerRate = 1;
 	bool timerRunning = false;
+	void nextClockCycle();
   protected:
 	void timerEvent(QTimerEvent *event) Q_DECL_OVERRIDE;
   public:
+	QTime currentTime;
 	Q_PROPERTY(QString currentTime_QML READ getCurrentTime NOTIFY onCurrentTimeChanged)
 	Q_INVOKABLE void toggleTimer(bool newTimerState);
 	T3Database(QObject *parent = nullptr);
 
 	Q_INVOKABLE QString getCurrentTime();
 	Q_INVOKABLE void setTimerRate(int rate);
+
   signals:
 	void onCurrentTimeChanged();
 
@@ -496,6 +501,8 @@ inline void T3Database::nc_iterate() {
 }
 
 
+
+
 inline void T3Database::nc_setKpAndKi(const QString trainId, float kp, float ki) {
 	T3TrainController::setKpAndKi(trainId, kp, ki, &MODU_ARGS);
 	db_push(TrainObjects);
@@ -536,6 +543,36 @@ inline QString T3Database::getCurrentTime() {
 
 inline void T3Database::setTimerRate(int rate) {
 	this->timerRate = static_cast<uint8_t>(rate);
+}
+
+inline void T3Database::nextClockCycle() {
+	//===========================CTC OFFICE===============================
+
+	//把所有比当前时间小的请求全部取出
+	const QList<QJsonObject> requestsReady
+		= T3CTCOffice::popFromDispatchQueueAtTime(&(this->dispatchQueue), currentTime);
+
+	//把每一个request都dispatch出去
+
+	//火车当前会占用一些区块,更新train model上的occupancy plc output
+	T3TrackModel::placeTrainFromDispatchRequest(&requestsReady, &this->MODU_ARGS);
+	T3TrackModel::updateTrainOccupancyOnAllBlocks(&this->MODU_ARGS);
+	T3TrackModel::updateTrainPositionOnAllBlocks(&this->MODU_ARGS);
+
+	//===========================TRACK CONTROLLER===============================
+
+	//--因为有了新的authority和train occupancy，在每一个block上运行plc程序，判定新的状态
+	T3TrackController::processAllPlc(&this->plcRuntime, &this->plcFunction, &this->MODU_ARGS);
+
+	//===========================TRAIN MODEL & TRACK MODEL===============================
+
+	//--利用TRAIN MODEL的现有速度，计算位移，并且在TRACK MODEL上更新
+	T3TrainModel::createNewTrainFromDispatchRequests(&requestsReady, &this->MODU_ARGS);
+	T3TrainModel::embarkAndDisembarkPassangerOnAllTrains(&this->MODU_ARGS);
+
+	T3TrainController::updateControlSystemsOnAllTrains(currentTime, &this->MODU_ARGS);
+	T3TrainController::updatePiOnAllTrains(&this->MODU_ARGS);
+	db_push();
 }
 
 #endif // T3Database_H

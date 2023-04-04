@@ -8,13 +8,14 @@ class T3TrainModel {
   public:
 
 	static void removeTrain(const QString trainId, MODU_ARGS_REF argsref);
+	static void createNewTrainFromDispatchRequests(const QList<QJsonObject> *poppedRequests, MODU_ARGS_REF argsref);
 	static void createNewTrain(const QString trainId, const QJsonArray path, MODU_ARGS_REF argsref);
-	static void trainTravelIterate(const QJsonObject *train, MODU_ARGS_REF argsref);
 	static QJsonArray getAllTrainIds( MODU_ARGS_REF argsref);
 	static void setFailureOrBrake(const QString trainId, const int index, const bool value, MODU_ARGS_REF argsref);
 	static QJsonArray getStringsFromMetaInfo(const QString trainId, MODU_ARGS_REF argsref);
+	static void embarkAndDisembarkPassangerOnAllTrains(MODU_ARGS_REF argsref);
   private:
-	//static const QHash<T3TrainModel::TrainProperty, QPair<QString, int>> trainPropertiesMetaDataMap;
+
 };
 
 inline void T3TrainModel::removeTrain(const QString trainId, MODU_ARGS_REF argsref) {
@@ -26,6 +27,17 @@ inline void T3TrainModel::removeTrain(const QString trainId, MODU_ARGS_REF argsr
 		}
 	}
 	qFatal("T3Database::removeTrainFromCtc() -> cannot find train id provided.");
+}
+
+inline void T3TrainModel::createNewTrainFromDispatchRequests(const QList<QJsonObject> *poppedRequests, MODU_ARGS_REF argsref) {
+	for(const QJsonObject& currRequest : *poppedRequests) {
+		QString trainId = currRequest.value("trainId").toString();
+		QJsonArray path = currRequest.value("path").toArray();
+		//determine if the train is moving forward or backward
+		createNewTrain(trainId, path, argsref);
+		Q_ASSERT(path.size() > 0);
+		SET_TRAIN_F(trainId, "NM_BLOCKID", path.at(0).toString(), argsref);
+	}
 }
 
 
@@ -51,81 +63,23 @@ inline void T3TrainModel::createNewTrain(const QString trainId, const QJsonArray
 	trainObject.insert(QString("COM[NC_NM]_FAILURE0"), false);
 	trainObject.insert(QString("COM[NC_NM]_FAILURE1"), false);
 	trainObject.insert(QString("COM[NC_NM]_FAILURE2"), false);
+	trainObject.insert(QString("COM[NC_NM]_SECLEFT"), -1);//output power
 	trainObject.insert(QString("NC_PREVE"), 0.0);//error
 	trainObject.insert(QString("NC_PREVY"), 0.0);//velocity
 	trainObject.insert(QString("NC_SUME"), 0.0);
-	trainObject.insert(QString("NC_DT"), 1.0);//
 	trainObject.insert(QString("NC_R"), 0.0);//velocity set point
 	trainObject.insert(QString("NC_KI"), 0.0);//
 	trainObject.insert(QString("NC_KP"), 0.0);
 	trainObject.insert(QString("NC_U"), 0.0);//output power
+
+	Q_ASSERT(path.size() >= 2);
 	trainObject.insert(QString("NM_BLOCKID"), path.at(0).toString());
+	trainObject.insert(QString("NM_NEXTBLOCKID"), path.at(1).toString());
 	std::get<4>(*argsref)->push_front(trainObject);
 }
 
 
-/**
- * @brief T3TrainModel::nm_trainTravelIterate
- * @param train 火车实体指针
- * @param quintupleBlocks 五重铁轨块元组
- * --TRAIN MODEL子函数
- * 对于在当前的铁轨块上的火车，根据火车内部存储的速度，计算在一秒内火车的位移，并且将位移信息更新到五重铁轨快元组
- * 如果火车在这一秒将越过当前铁轨块，那么将会擦除当前铁轨块上的火车信息，并且迁移到上一铁轨块或下一铁轨块
- *
- * 此函数一定修改当前铁轨块，可能修改上一个或下一个铁轨块
- *
- * ￥此函数为自然模拟函数，无论火车控制器和铁轨控制器的状态如何，每个时钟此函数无论如何必须被调用！
- *
- * ￥请注意，请确保在调用此函数前，确保当前铁轨块上存在火车，并且铁轨块上火车的标识与传入的火车实体标识一致！
- *
- */
-inline void T3TrainModel::trainTravelIterate(const QJsonObject *train, MODU_ARGS_REF argsref) {
-	//trainOnBlock formats: ID_DIRECTION_PERCENT
-//	Q_ASSERT(quintupleBlocks.size() == 5);
-//	QStringList trainOnBlock = quintupleBlocks.at(2).second->value("trainOnBlock").toString().split("_");
-//	Q_ASSERT(trainOnBlock.size() == 3);
-//	QString trainId = trainOnBlock.at(0);
-//	Q_ASSERT(trainId == train->value("id").toString());
-//	QString trainDirection = trainOnBlock.at(1);
-//	bool toFloatConversionStatus = true;
-//	float trainTravelledPercent = trainOnBlock.at(2).toFloat(&toFloatConversionStatus);
-//	Q_ASSERT(toFloatConversionStatus);
 
-//	//iterate per one second
-//	float dt = 1 / 60 / 60; //1 second in hours
-//	float v = train->value("velocity").toDouble();
-//	Q_ASSERT(toFloatConversionStatus);
-//	float ds = dt * v;
-
-//	float totalBlockLength = quintupleBlocks.at(2).first->value("length").toDouble();
-//	float remainingBlockLength = totalBlockLength * trainTravelledPercent;
-//	if(remainingBlockLength < ds) {
-//		//time to traverse to next block
-//		bool reversedTravel = trainDirection.contains("R");
-//		if(reversedTravel) Q_ASSERT(trainDirection.contains("F"));
-//		const QJsonObject* nextOrPrevBlockConObj = quintupleBlocks.at(reversedTravel ? 1 : 3).first;
-//		QJsonObject* nextOrPrevBlockVarObj = quintupleBlocks.at(reversedTravel ? 1 : 3).second;
-
-//		totalBlockLength = nextOrPrevBlockConObj->value("length").toDouble();
-//		float newInitialBlockLength = ds - remainingBlockLength;
-//		remainingBlockLength = totalBlockLength - newInitialBlockLength;
-//		trainTravelledPercent = 1 - remainingBlockLength / totalBlockLength;
-
-//		const QString prevBlock1Id = quintupleBlocks.at(2).first->value("prevBlock1").toString();
-//		bool isAtViewBorder = (prevBlock1Id.contains("START") && reversedTravel) || (prevBlock1Id.contains("END") && !reversedTravel);
-//		if(isAtViewBorder) trainDirection = trainDirection.contains("F") ? "R" : "F";
-//		trainOnBlock = QStringList{trainId, trainDirection, QString::number(trainTravelledPercent)};
-
-//		quintupleBlocks.at(2).second->insert("trainOnBlock", QString(""));//remove train from last block
-//		nextOrPrevBlockVarObj->insert("trainOnBlock", trainOnBlock.join("_"));//add train to new block
-//	} else {
-//		//stays on current block
-//		remainingBlockLength -= ds;
-//		trainTravelledPercent = 1 - remainingBlockLength / totalBlockLength;
-//		trainOnBlock = QStringList{trainId, trainDirection, QString::number(trainTravelledPercent)};
-//		quintupleBlocks.at(2).second->insert("trainOnBlock", trainOnBlock.join("_"));//update train from last block
-	//	}
-}
 
 inline QJsonArray T3TrainModel::getAllTrainIds(MODU_ARGS_REF argsref) {
 	QJsonArray toRet;
@@ -271,6 +225,29 @@ inline QJsonArray T3TrainModel::getStringsFromMetaInfo(const QString trainId, MO
 		metaInfo.append(f3);
 	}
 	return QJsonArray::fromVariantList(metaInfo);
+}
+
+inline void T3TrainModel::embarkAndDisembarkPassangerOnAllTrains(MODU_ARGS_REF argsref) {
+	for(const QJsonValue currTrainRaw : qAsConst(*std::get<4>(*argsref))) {
+		QJsonObject currTrain = currTrainRaw.toObject();
+		QString trainId = currTrain.value("NM_ID").toString();
+		QString blockId = currTrain.value("NM_BLOCKID").toString();
+		QString BCNPLCOUT = GET_TRACKVAR_F(blockId, "COM[KC|KM]_BCNPLCOUT", argsref).toString();
+		if(!(BCNPLCOUT.at(26) == '1' || BCNPLCOUT.at(27) == '1')) continue;
+		int secondsLeft = currTrain.value("COM[NC_NM]_SECLEFT").toInt();
+		if(secondsLeft == 25) {
+			uint passangerCount = currTrain.value("NM_PASSANGERCOUNT").toInt();
+			uint peopleOnStation = GET_TRACKVAR_F(blockId, "KM_PEOPLEONSTATION", argsref).toUInt();
+			uint fromTrainToStation = QRandomGenerator::global()->bounded(0u, passangerCount);
+			uint fromStationToTrain = QRandomGenerator::global()->bounded(0u, peopleOnStation);
+			SET_TRACKVAR_F(blockId, "KM_TRAINTOSTATIONCOUNT", fromTrainToStation, argsref);
+			SET_TRACKVAR_F(blockId, "KM_STATIONTOTRAINCOUNT", fromStationToTrain, argsref);
+			passangerCount =  passangerCount - fromTrainToStation + fromStationToTrain;
+			peopleOnStation = peopleOnStation + fromTrainToStation - fromStationToTrain;
+			SET_TRACKVAR_F(blockId, "KM_PEOPLEONSTATION", peopleOnStation, argsref);
+			SET_TRAIN_F(trainId, "NM_PASSANGERCOUNT", passangerCount, argsref);
+		}
+	}
 }
 
 

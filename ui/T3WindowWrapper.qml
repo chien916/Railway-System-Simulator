@@ -35,19 +35,12 @@ ApplicationWindow {
 		}
 
 	Component.onCompleted: {
-		animation.duration = 800
+		animation.duration = 200
 		animateOpac(0,1);
 		myLoader.active = true;
 		animation.duration = 200
 	}
-	onClosing: {
-		close.accepted = false
-		animation.duration = 800
-		animateOpac(1,0);
-
-		//for(let i = 0;i<100000;++i){}
-		//rootWindow.close()
-	}
+	property bool closeFlag_b:false
 	function animateOpac(fromWhich,toWhich){
 		animation.from = fromWhich;
 		animation.to = toWhich;

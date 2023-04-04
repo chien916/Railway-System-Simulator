@@ -21,7 +21,6 @@ Item {
 		for(let i = 0;i<displayString_sA.length;++i){
 			repe_dataFields.itemAt(i).stringToDisp_s = displayString_sA[i];
 		}
-
 		let metaInfo_A = t3databaseQml.km_getIOFromMetaInfo(blockId_s);
 		cust_envTemp.valueratio_r = metaInfo_A[0]/cust_envTemp.maxValue_r;
 		butt_brokenRail.currState_b = metaInfo_A[1];

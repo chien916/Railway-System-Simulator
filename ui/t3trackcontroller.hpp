@@ -12,6 +12,7 @@ class T3TrackController {
 	static void runPlcScript(QString &CTCPLCIO, QString &BCNPLCOUT, QString& KMPLCIO, QString& KCPLCIN
 							 ,  QJSEngine*runTime,  QJSValue* function);
 	static void processPlc(const QString blockId, QJSEngine* plcRuntime, QJSValue* plcFunction, MODU_ARGS_REF argsref);
+	static void processAllPlc(QJSEngine* plcRuntime, QJSValue* plcFunction, MODU_ARGS_REF argsref);
 	static QJsonArray readPlcToMetaInfo(const QString blockId, MODU_ARGS_REF argsref);
 	static void writePlcFromMetaInfo(const QString blockId, const QJsonArray metaInfo, MODU_ARGS_REF argsref);
 	static QJsonArray getAllPlcBinaries(const QString blockId, MODU_ARGS_REF argsref);
@@ -81,6 +82,16 @@ inline void T3TrackController::processPlc(const QString blockId, QJSEngine *plcR
 	SET_TRACKVAR_F(blockId, "COM[KC|KM]_BCNPLCOUT", BCNPLCOUT, argsref);
 	SET_TRACKVAR_F(blockId, "COM[KC|KM]_KMPLCIO", KMPLCIO, argsref);
 	SET_TRACKVAR_F(blockId, "KC_KCPLCIN", KCPLCIN, argsref);
+}
+
+inline void T3TrackController::processAllPlc(QJSEngine *plcRuntime, QJSValue *plcFunction, MODU_ARGS_REF argsref) {
+	for(qsizetype i = 0; i < std::get<3>(*argsref)->size(); ++i) {//for each line
+		QStringList allBlockIds = std::get<3>(*argsref)->at(i).toObject().keys();
+		for(const QString& blockId : qAsConst(allBlockIds)) {//for each block on current line
+			processPlc(blockId, plcRuntime, plcFunction, argsref);
+		}
+	}
+
 }
 
 inline QJsonArray T3TrackController::readPlcToMetaInfo(const QString blockId, MODU_ARGS_REF argsref) {

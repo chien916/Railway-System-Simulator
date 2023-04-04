@@ -15,6 +15,7 @@
  * -> trackControllerMaintanceMode[26]
  * -> wayside connected to train model[27] ?
  * -> wayside connected to beacon[28] ?
+ *
  * 
  * inputs from track controller
  * -> connection[0]
@@ -63,7 +64,6 @@
  * -> station on the left[26]
  * -> station on the right[27]
  * -> is underground[28]
- * -> station id[29:31]
   */
 
 // let _CTCPLCIO =

@@ -1,8 +1,11 @@
 #ifndef T3PROPHELPER_H
 #define T3PROPHELPER_H
 
-#include<QtCore>
+#include <QtCore>
 #include <QtQml>
+
+
+
 
 using MODU_ARGS_REF
 	= const std::tuple<const std::function<QVariant(const QString, const QString, const QJsonArray*)>*
@@ -14,6 +17,7 @@ using MODU_ARGS_REF
 #define GET_TRAIN_F(ID,PROP,ARGREF) (*std::get<0>(*ARGREF))(ID,PROP, std::get<4>(*ARGREF))
 #define SET_TRACKVAR_F(ID,PROP,VALUE,ARGREF) (*std::get<1>(*ARGREF))(ID,PROP, std::get<3>(*ARGREF), VALUE)
 #define SET_TRAIN_F(ID,PROP,VALUE,ARGREF) (*std::get<1>(*ARGREF))(ID,PROP, std::get<4>(*ARGREF), VALUE)
+
 
 #define M2YARD_F(VAL) 1.90361f*static_cast<float>(VAL)
 #define YARD2M_F(VAL) static_cast<float>(VAL)/1.90361f

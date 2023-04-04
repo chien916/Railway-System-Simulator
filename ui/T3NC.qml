@@ -6,31 +6,34 @@ Item {
 	implicitHeight: 350
 
 	property bool engineerMode_b:false
+	onEngineerMode_bChanged: db2view(true);
 	property bool autoMode_b:true
+	onAutoMode_bChanged: db2view(true);
 	property bool stationMode_b:false
 	property string trainId_s:cust_trainSelector.currValue_s
 	onTrainId_sChanged:{
 		rect_frontHelper.runAnimation();
+		db2view(true);
 	}
 	Connections{
 		target: t3databaseQml
 		function onOnTrainObjectsChanged(){
-			db2view();
+			db2view(false);
 		}
 	}
 
-	function db2view(){
-		if(trainId_s==="") return;
+	function db2view(includeIO_b){
+		if(trainId_s===""||!reap_paramsToggle||!reap_gain||!reap_gainValue) return;
 		let metaInfo_A = t3databaseQml.nc_getMetaInfo(trainId_s);
 		cGau_power.currValue_n = metaInfo_A[18]
 		cGau_velocity.currValue_n = metaInfo_A[7]
 		cGau_accel.currValue_n = metaInfo_A[6]//set point
 		if(engineerMode_b){
-			if(reap_gain&&reap_gainValue){
-				reap_gain.itemAt(0).value_r =  metaInfo_A[11]
-				reap_gainValue.itemAt(0).value_r =  metaInfo_A[11]
-				reap_gain.itemAt(1).value_r =  metaInfo_A[12]
-				reap_gainValue.itemAt(1).value_r =  metaInfo_A[12]
+			reap_gain.itemAt(0).value_r =  metaInfo_A[11]
+			reap_gainValue.itemAt(0).value_r =  metaInfo_A[11]
+			reap_gain.itemAt(1).value_r =  metaInfo_A[12]
+			reap_gainValue.itemAt(1).value_r =  metaInfo_A[12]
+			if(includeIO_b){
 				cust_kpToggler.valueratio_r = metaInfo_A[11]
 				cust_kiToggler.valueratio_r = metaInfo_A[12]
 			}
@@ -41,16 +44,18 @@ Item {
 			pid_pid.i_r = metaInfo_A[10]
 			pid_pid.u_r = metaInfo_A[18]
 		}else{
-			cust_kpToggler.valueratio_r = metaInfo_A[0]?1:0
-			cust_kiToggler.valueratio_r = metaInfo_A[5]?1:0
+			if(includeIO_b){
+				cust_kpToggler.valueratio_r = metaInfo_A[0]?1:0
+				cust_kiToggler.valueratio_r = metaInfo_A[5]?1:0
+			}
 		}
-		if(reap_paramsToggle){
+		if(includeIO_b){
 			reap_paramsToggle.itemAt(0).valueratio_r= metaInfo_A[1]?1:0;
 			reap_paramsToggle.itemAt(1).valueratio_r= metaInfo_A[2]?1:0;
 			reap_paramsToggle.itemAt(2).valueratio_r= metaInfo_A[3]?1:0;
 			reap_paramsToggle.itemAt(3).valueratio_r= metaInfo_A[4]?1:0;
+			cust_speedSetpoint.valueratio_r = metaInfo_A[6]/100;
 		}
-		cust_speedSetpoint.valueratio_r = metaInfo_A[6]/100;
 		//station info
 		text_stationInfo.textContent_s = metaInfo_A[17];
 	}
@@ -395,19 +400,25 @@ Item {
 				id:cust_kpToggler
 				paramConfig_A: engineerMode_b?"F_F_Kp_":"F_T_Service Brake_";
 				isWhole_b: !engineerMode_b
+				readOnly_b: !(engineerMode_b||!autoMode_b)
 				maxValue_r: engineerMode_b?1:100
 				fixedPoint_i: 3
 				height: parent.unitHeight_r
 				width: parent.width
+				opacity: readOnly_b?0.5:1
+				Behavior on opacity{PropertyAnimation{ }}
 
 			}
 			T3ParamUnit{
 				id:cust_kiToggler
 				paramConfig_A: engineerMode_b?"F_F_Ki_":"F_T_Emergency Brake_";
-				maxValue_r: 1
+				readOnly_b: !(engineerMode_b||!autoMode_b)
+				maxValue_r: engineerMode_b?1:1
 				fixedPoint_i: 3
 				height: parent.unitHeight_r
 				width: parent.width
+				opacity: readOnly_b?0.5:1
+				Behavior on opacity{PropertyAnimation{ }}
 			}
 
 		}

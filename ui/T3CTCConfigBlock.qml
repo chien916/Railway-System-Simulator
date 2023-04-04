@@ -3,7 +3,7 @@ import QtQuick 2.12
 Item {
 	id:root
 	signal applyClicked();
-	property string blockId_s:"B_A_5"
+	property string blockId_s:""
 	readonly property string switchSide_s : "left"
 	onBlockId_sChanged: {db2view(true)}
 	readonly property variant configModel_nA:[
@@ -288,6 +288,7 @@ Item {
 
 
 	function db2view(maintanceModeIncluded_b:bool){
+		if(blockId_s==="")return;
 		let metaInfo_A = t3databaseQml.ctc_readPlcInputFromMetaInfo(blockId_s);
 		custom_maintainanceMode.valueratio_r = metaInfo_A[0]?1:0;
 		cust_suggestedSpeed.valueratio_r = metaInfo_A[1]/100;
@@ -296,6 +297,7 @@ Item {
 	}
 
 	function view2db(){
+		if(blockId_s==="")return;
 		let metaInfo_A = [
 				custom_maintainanceMode.valueratio_r>0.5,
 				cust_suggestedSpeed.actualValue_r,

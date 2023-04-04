@@ -48,42 +48,57 @@ Window {
 		color: T3Styling.cBgMain_c
 		anchors.fill: parent
 	}
+	T3Text{
+		id: imag_prof
+		anchors.top:parent.top
+		anchors.margins:T3Styling.spacing_r
+		anchors.horizontalCenter: bg.horizontalCenter
+		height: 250
+		width: 250
+		rotation: 0
+		textPixelSize_r:T3Styling.fontMain_r
+		textColor_c:  T3Styling.cFgMain_c
+		textContent_s: t3databaseQml.currentTime_QML
+		MouseArea{
+			anchors.fill: parent
+			onClicked: t3databaseQml._TEST_ITERATE()
+		}
+	}
 
-		Image {
-			id: imag_prof
-			anchors.top:parent.top
-			anchors.margins:T3Styling.spacing_r
-			anchors.horizontalCenter: bg.horizontalCenter
-			height: 250
-			width: 250
-			source: "qrc:/1516358265460-modified.png"
-			rotation: 20
-			PropertyAnimation{
-				id:anim
-				easing.type: Easing.InOutCirc
-				target:imag_prof
-				property: "rotation"
-				from:0
-				to:360
-				running: true
-				duration: 100
+/*Image {
+		id: imag_prof
+		anchors.top:parent.top
+		anchors.margins:T3Styling.spacing_r
+		anchors.horizontalCenter: bg.horizontalCenter
+		height: 250
+		width: 250
+		source: "qrc:/1516358265460-modified.png"
+		rotation: 20
+		PropertyAnimation{
+			id:anim
+			easing.type: Easing.InOutCirc
+			target:imag_prof
+			property: "rotation"
+			from:0
+			to:360
+			running: true
+			duration: 100
 //				onFinished: {
 //					duration = 10000/music.playbackRate
 //					running = true;
 //				}
-				onFinished: {
-					from = to;
-					to = Math.floor(Math.random()*360)
-					duration= Math.floor(Math.random()* (1000 - 200 + 1) + 200)
-					running = true;
-				}
-			}
-			MouseArea{
-				anchors.fill: parent
-				onClicked: musicPlay_b = !musicPlay_b
+			onFinished: {
+				from = to;
+				to = Math.floor(Math.random()*360)
+				duration= Math.floor(Math.random()* (1000 - 200 + 1) + 200)
+				running = true;
 			}
 		}
-
+		MouseArea{
+			anchors.fill: parent
+			onClicked: musicPlay_b = !musicPlay_b
+		}
+	}*/
 
 	Grid{
 		id:grid_buttons

@@ -14,6 +14,7 @@ class T3TrainModel {
 	static void setFailureOrBrake(const QString trainId, const int index, const bool value, MODU_ARGS_REF argsref);
 	static QJsonArray getStringsFromMetaInfo(const QString trainId, MODU_ARGS_REF argsref);
 	static void embarkAndDisembarkPassangerOnAllTrains(MODU_ARGS_REF argsref);
+	static void updateTrainVelocityOnAllTrains(MODU_ARGS_REF argsref);
   private:
 
 };
@@ -36,7 +37,7 @@ inline void T3TrainModel::createNewTrainFromDispatchRequests(const QList<QJsonOb
 		//determine if the train is moving forward or backward
 		createNewTrain(trainId, path, argsref);
 		Q_ASSERT(path.size() > 0);
-		SET_TRAIN_F(trainId, "NM_BLOCKID", path.at(0).toString(), argsref);
+		//SET_TRAIN_F(trainId, "NM_BLOCKID", path.at(0).toString(), argsref);
 	}
 }
 
@@ -59,7 +60,7 @@ inline void T3TrainModel::createNewTrain(const QString trainId, const QJsonArray
 	trainObject.insert(QString("COM[NC_NM]_LDOOR"), false);
 	trainObject.insert(QString("COM[NC_NM]_RDOOR"), false);
 	trainObject.insert(QString("COM[NC_NM]_EBRAKE"), false);
-	trainObject.insert(QString("COM[NC_NM]_SBRAKE"), false);
+	trainObject.insert(QString("COM[NC_NM]_SBRAKE"), true);
 	trainObject.insert(QString("COM[NC_NM]_FAILURE0"), false);
 	trainObject.insert(QString("COM[NC_NM]_FAILURE1"), false);
 	trainObject.insert(QString("COM[NC_NM]_FAILURE2"), false);
@@ -68,8 +69,8 @@ inline void T3TrainModel::createNewTrain(const QString trainId, const QJsonArray
 	trainObject.insert(QString("NC_PREVY"), 0.0);//velocity
 	trainObject.insert(QString("NC_SUME"), 0.0);
 	trainObject.insert(QString("NC_R"), 0.0);//velocity set point
-	trainObject.insert(QString("NC_KI"), 0.0);//
-	trainObject.insert(QString("NC_KP"), 0.0);
+	trainObject.insert(QString("NC_KI"), 0.5);//
+	trainObject.insert(QString("NC_KP"), 0.5);
 	trainObject.insert(QString("NC_U"), 0.0);//output power
 
 	Q_ASSERT(path.size() >= 2);
@@ -157,7 +158,7 @@ inline QJsonArray T3TrainModel::getStringsFromMetaInfo(const QString trainId, MO
 	}
 	{
 		//7- powert
-		float power  = GET_TRAIN_F(trainId, "NC_U", argsref).toFloat();
+		float power  = (GET_TRAIN_F(trainId, "NC_U", argsref).toFloat()) / 1e3f;
 		metaInfo.append(power);
 	}
 	{
@@ -228,7 +229,7 @@ inline QJsonArray T3TrainModel::getStringsFromMetaInfo(const QString trainId, MO
 }
 
 inline void T3TrainModel::embarkAndDisembarkPassangerOnAllTrains(MODU_ARGS_REF argsref) {
-	for(const QJsonValue currTrainRaw : qAsConst(*std::get<4>(*argsref))) {
+	for(const QJsonValue& currTrainRaw : qAsConst(*std::get<4>(*argsref))) {
 		QJsonObject currTrain = currTrainRaw.toObject();
 		QString trainId = currTrain.value("NM_ID").toString();
 		QString blockId = currTrain.value("NM_BLOCKID").toString();
@@ -247,6 +248,57 @@ inline void T3TrainModel::embarkAndDisembarkPassangerOnAllTrains(MODU_ARGS_REF a
 			SET_TRACKVAR_F(blockId, "KM_PEOPLEONSTATION", peopleOnStation, argsref);
 			SET_TRAIN_F(trainId, "NM_PASSANGERCOUNT", passangerCount, argsref);
 		}
+	}
+}
+
+inline void T3TrainModel::updateTrainVelocityOnAllTrains(MODU_ARGS_REF argsref) {
+	for(const QJsonValue& currTrainRaw : qAsConst(*std::get<4>(*argsref))) {
+		QJsonObject currTrain = currTrainRaw.toObject();
+		//Oh dear here comes the physics
+		QString blockId = currTrain.value("NM_BLOCKID").toString();
+		const float dt = 1.0f;
+		const float g = 9.8f;
+		float grade = GET_TRACKCON_F(blockId, "grade", argsref).toDouble();
+		float velocity = currTrain.value("NC_PREVY").toDouble();
+		float accel = currTrain.value("NM_ACCELERATION").toDouble();
+		float mass = currTrain.value("NM_MASS").toDouble();
+		float power = currTrain.value("NC_U").toDouble();
+		float theta = qAtan(grade / 100);
+		float F_grade = mass * g * qSin(theta);
+		float F_engine = power / velocity;
+		if(qIsNaN(F_engine) || qIsInf(F_engine) || (F_engine > 0 && F_engine < F_grade * 1.1)  || qAbs(velocity) < 10)
+			F_engine = (F_engine < 0 ? -1 : 1) * F_grade * 1.1;
+		//qDebug() << QString("POWER: %1 , VELOC: %2, FGRADE %3, F ENGINE %4").arg(power).arg(velocity).arg(F_grade).arg(F_engine);
+		float accel_new = (F_engine * 10 - 0)  / mass;
+		//qDebug() << QString("accel: %1").arg(accel_new);
+		//brakes
+//		if(currTrain.value("COM[NC_NM]_EBRAKE").toBool()) {
+//			accel_new = -1.2f;
+//		} else if(currTrain.value("COM[NC_NM]_SBRAKE").toBool()) {
+//			accel_new = -2.73f;
+//		}
+		//maximum and minimum speed
+
+		//float velocity_new = velocity;
+//		if(currTrain.value("COM[NC_NM]_EBRAKE").toBool() || currTrain.value("COM[NC_NM]_SBRAKE").toBool()) {
+//			if(velocity_new < - 3) velocity_new += 1;
+//			else if(velocity_new > 3) velocity_new -= 1;
+//			else if(velocity_new == 0)velocity_new = 0;
+//			accel_new = 0;
+//		} else {
+//			velocity_new =   + dt * (accel_new + accel) / 2;
+//		}
+		//if(velocity_new < 0) velocity_new = 0;
+		//qDebug() << QString("-1- %1 + %2 * ( %3 + %4) = %5").arg(velocity).arg(dt).arg(accel_new).arg(accel).arg(velocity_new);
+//		if(velocity_new > 19.4444f) {
+//			velocity_new = 19.4444f;
+////			if(accel_new > 0) accel_new = 0;
+//		} else if(velocity_new < 0) {
+//			velocity_new = 0.0f;
+////			if(accel_new < 0) accel_new = 0;
+//		}
+		//SET_TRAIN_F(currTrain.value("NM_ID").toString(), "NM_ACCELERATION", qRound(accel_new * 100) / 100, argsref);
+		//SET_TRAIN_F(currTrain.value("NM_ID").toString(), "NC_PREVY", qRound(velocity_new), argsref);
 	}
 }
 

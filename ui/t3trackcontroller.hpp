@@ -85,6 +85,7 @@ inline void T3TrackController::processPlc(const QString blockId, QJSEngine *plcR
 }
 
 inline void T3TrackController::processAllPlc(QJSEngine *plcRuntime, QJSValue *plcFunction, MODU_ARGS_REF argsref) {
+	qDebug() << "I;m running";
 	for(qsizetype i = 0; i < std::get<3>(*argsref)->size(); ++i) {//for each line
 		QStringList allBlockIds = std::get<3>(*argsref)->at(i).toObject().keys();
 		for(const QString& blockId : qAsConst(allBlockIds)) {//for each block on current line
@@ -96,6 +97,7 @@ inline void T3TrackController::processAllPlc(QJSEngine *plcRuntime, QJSValue *pl
 
 inline QJsonArray T3TrackController::readPlcToMetaInfo(const QString blockId, MODU_ARGS_REF argsref) {
 	QString KCPLCIN = GET_TRACKVAR_F(blockId, "KC_KCPLCIN", argsref).toString();
+	QString BCNPLCOUT = GET_TRACKVAR_F(blockId, "COM[KC|KM]_BCNPLCOUT", argsref).toString();
 	QList<QVariant> metaInfo = {
 		KCPLCIN.at(1) == '1',//0-maintance mode
 		static_cast<float>(KMH2MPH_F(GET_TRACKCON_F(blockId, "speedLimit", argsref).toUInt())),//1-speed limit
@@ -128,6 +130,38 @@ inline QJsonArray T3TrackController::readPlcToMetaInfo(const QString blockId, MO
 		else if(switchPosition == "01")metaInfo[5] = QString("bottom");
 		else metaInfo[5] = QString("auto");
 	}
+	QList<QVariant> metaInfo2 = {
+		KCPLCIN.at(1) == '1',//0-maintance mode
+		static_cast<float>(KMH2MPH_F(GET_TRACKCON_F(blockId, "speedLimit", argsref).toUInt())),//1-speed limit
+		static_cast<float>(KMH2MPH_F(GET_TRACKVAR_F(blockId, "COM[CTC|KC]_CTCPLCIO", argsref).toString().midRef(2, 8).toUInt(nullptr, 2))),//2-suggested speed
+		static_cast<float>(KMH2MPH_F(BCNPLCOUT.midRef(10, 8).toUInt(nullptr, 2))),//3-comanded speed
+		QString("red"),//4-left signal -> handles later
+		QString("up"),//5-switch -> handles later
+		KCPLCIN.at(13) == '1' ? "closed" : "open",//6-gate
+		QString("red"),//7-right signal -> handles later
+		BCNPLCOUT.at(0) == '1',//8-auth prev next
+		BCNPLCOUT.at(1) == '1',//9-auth up down
+		static_cast<float>(BCNPLCOUT.midRef(2, 8).toUInt(nullptr, 2))//10-auth block number
+	};
+	{
+		//left signal
+		QStringRef leftSignal = KCPLCIN.midRef(10, 2);
+		if(leftSignal == "01") metaInfo2[4] = QString("yellow");
+		else if(leftSignal == "10") metaInfo2[4] = QString("green");
+		else metaInfo2[4] = QString("red");
+
+		//right signal
+		QStringRef rightSignal = KCPLCIN.midRef(14, 2);
+		if(rightSignal == "01") metaInfo2[7] = QString("yellow");
+		else if(rightSignal == "10") metaInfo2[7] = QString("green");
+		else metaInfo2[7] = QString("red");
+
+		//switch position
+		QStringRef switchPosition = KCPLCIN.midRef(26, 2);
+		if(switchPosition == "11") metaInfo2[5] = QString("top");
+		else if(switchPosition == "01")metaInfo2[5] = QString("bottom");
+		else metaInfo2[5] = QString("auto");
+	}
 	/**
 	 *  * inputs from track controller
 	 * -> connection[0]
@@ -141,7 +175,7 @@ inline QJsonArray T3TrackController::readPlcToMetaInfo(const QString blockId, MO
 	 * -> authority block numbers [18:25] //CAN BE OVERWRITTEN UNDER MAINTANCE MODE
 	 * -> switch position from kc [26:27] //00-auto 01-bottom 11-top //CAN BE OVERWRITTEN UNDER MAINTANCE MODE
 	 */
-	return QJsonArray::fromVariantList(metaInfo);
+	return QJsonArray{QJsonArray::fromVariantList(metaInfo), QJsonArray::fromVariantList(metaInfo2)};
 }
 
 inline void T3TrackController::writePlcFromMetaInfo(const QString blockId, const QJsonArray metaInfo, MODU_ARGS_REF argsref) {
@@ -235,9 +269,9 @@ inline QJsonArray T3TrackController::getAllPlcBinaries(const QString blockId, MO
 	}
 	return QJsonArray(std::initializer_list<QJsonValue> {
 		QJsonArray::fromVariantList(CTCPLCIO_booleanArray),
-		QJsonArray::fromVariantList(BCNPLCOUT_booleanArray),
 		QJsonArray::fromVariantList(KMPLCIO_booleanArray),
-		QJsonArray::fromVariantList(KCPLCIN_booleanArray)
+		QJsonArray::fromVariantList(KCPLCIN_booleanArray),
+		QJsonArray::fromVariantList(BCNPLCOUT_booleanArray)
 	});
 }
 

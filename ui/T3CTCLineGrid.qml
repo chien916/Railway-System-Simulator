@@ -185,7 +185,7 @@ Item {
 				}
 				Timer{
 					id:time_pathSelectionBlockRollController
-					interval:root.pathsAvailable_sA.length===0?1:1000/root.pathsAvailable_sA.length
+					interval:root.pathsAvailable_sA?root.pathsAvailable_sA.length===0?1:1000/root.pathsAvailable_sA.length:1000
 					running: pathsAvailable_sA.length>0
 					repeat: true
 					onTriggered: {

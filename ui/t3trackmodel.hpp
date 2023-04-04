@@ -326,22 +326,13 @@ inline void T3TrackModel::updateTrainPositionOnAllBlocks(MODU_ARGS_REF argsref) 
 	for(const QJsonValue& currTrainRaw : qAsConst(*std::get<4>(*argsref))) {
 		QJsonObject currTrain = currTrainRaw.toObject();
 		//Oh dear here comes the physics
+		QString trainId = currTrain.value("NM_ID").toString();
 		QString blockId = currTrain.value("NM_BLOCKID").toString();
-		const float dt = 1.0f;
-		const float g = 9.8f;
-		float grade = GET_TRACKCON_F(blockId, "grade", argsref).toDouble();
 		float length = GET_TRACKCON_F(blockId, "length", argsref).toDouble();
 		float velocity = currTrain.value("NC_PREVY").toDouble();
-		float accel = currTrain.value("NM_ACCELERATION").toDouble();
-		float mass = currTrain.value("NM_MASS").toDouble();
-		float power = currTrain.value("NC_U").toDouble();
-		float theta = qAtan(grade / 100);
-		float F_grade = mass * g * qSin(theta);
-		float TE = power / velocity;
-		float accel_new = (TE - F_grade) / mass;
-		float velocity_new = velocity + dt * (accel_new + accel);
+		const float dt = 1.0f;
 		//traverse through block
-		float ds = (velocity + velocity_new) / 2 * dt;
+		float ds = velocity  * dt;
 		QStringList trainOnBlockSplit = GET_TRACKVAR_F(blockId, "KM_TRAINONBLOCK", argsref).toString().split("_");
 		Q_ASSERT(trainOnBlockSplit.count() == 3);
 		bool isMovingForward = trainOnBlockSplit.at(1).contains("F");
@@ -357,13 +348,12 @@ inline void T3TrackModel::updateTrainPositionOnAllBlocks(MODU_ARGS_REF argsref) 
 			//clears the train info from previous block
 			SET_TRACKVAR_F(blockId, "KM_TRAINONBLOCK", QString(""), argsref);
 			blockId = blockId_new;
+			SET_TRAIN_F(trainId, "NM_BLOCKID", blockId, argsref);
 			percentTravelled = percentTravelled_new;
 			length = length_new;
 		}
 		trainOnBlockSplit.replace(2, QString::number(percentTravelled));
 		SET_TRACKVAR_F(blockId, "KM_TRAINONBLOCK", trainOnBlockSplit.join("_"), argsref);
-		SET_TRAIN_F(currTrain.value("NM_ID").toString(), "NM_ACCELERATION", accel_new, argsref);
-		SET_TRAIN_F(currTrain.value("NM_ID").toString(), "NC_PREVY", velocity_new, argsref);
 	}
 }
 

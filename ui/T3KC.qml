@@ -15,7 +15,7 @@ Item {
 	Connections{
 		target: t3databaseQml
 		function onOnTrackVariablesObjectsChanged(){
-			db2view();
+			db2view(false);
 		}
 	}
 	function view2db(){
@@ -38,13 +38,14 @@ Item {
 	function db2view(includeIO_b){
 		if(blockId_s==="") return;
 		//from here are the readonlys
-		let metaInfo_A = t3databaseQml.kc_readPlcToMetaInfo(blockId_s);
-		cust_maintainanceMode.valueratio_r = metaInfo_A[0]?1:0;
+		let metaInfo_A = t3databaseQml.kc_readPlcToMetaInfo(blockId_s)[1];
+
 		cust_speedLimit.valueratio_r = metaInfo_A[1]/cust_speedLimit.maxValue_r;
 		cust_suggestedSpeed.valueratio_r= metaInfo_A[2]/cust_suggestedSpeed.maxValue_r;
 		//from here are the i/o s
-		if(includeIO_b){
-			cust_commandedSpeed.valueratio_r=metaInfo_A[3]/cust_commandedSpeed.maxValue_r;//io!
+
+		cust_commandedSpeed.valueratio_r=metaInfo_A[3]/cust_commandedSpeed.maxValue_r;//io!
+		if(cust_maintainanceMode.valueratio_r<0.5){
 			if(metaInfo_A[4]==="red") cust_leftSignalDial.dialDialValue_r = 0;
 			else if(metaInfo_A[4]==="yellow") cust_leftSignalDial.dialDialValue_r = 0.18;
 			else if(metaInfo_A[4]==="green") cust_leftSignalDial.dialDialValue_r = 0.36;
@@ -61,12 +62,15 @@ Item {
 			cust_authSwitchDirection.valueratio_r = metaInfo_A[9]?1:0;
 			cust_authNumberOfBlocks.valueratio_r = metaInfo_A[10]/cust_authNumberOfBlocks.maxValue_r;
 		}
+		if(includeIO_b) cust_maintainanceMode.valueratio_r = metaInfo_A[0]?1:0;
+
 		//handles plc binaries
 		reap_plcbinaries.model = t3databaseQml.kc_getAllPlcBinaries(blockId_s)
 	}
 	onBlockId_sChanged: {
-		db2view();
+
 		rect_frontHelper.runAnimation();
+		db2view(true);
 	}
 	implicitHeight: 500
 	implicitWidth: 1200

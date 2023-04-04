@@ -242,14 +242,20 @@ class T3Database: public QObject {
 	uint8_t timerRate = 1;
 	bool timerRunning = false;
 	void nextClockCycle();
+
   protected:
 	void timerEvent(QTimerEvent *event) Q_DECL_OVERRIDE;
   public:
 	QTime currentTime;
 	Q_PROPERTY(QString currentTime_QML READ getCurrentTime NOTIFY onCurrentTimeChanged)
 	Q_INVOKABLE void toggleTimer(bool newTimerState);
+	Q_INVOKABLE void _TEST_ITERATE() {
+		nextClockCycle();
+		this->currentTime = this->currentTime.addMSecs(100 * static_cast<int>(timerRate));
+		Q_EMIT onCurrentTimeChanged();
+	}
 	T3Database(QObject *parent = nullptr);
-
+	bool busy = false;
 	Q_INVOKABLE QString getCurrentTime();
 	Q_INVOKABLE void setTimerRate(int rate);
 
@@ -270,18 +276,18 @@ inline T3Database::T3Database(QObject * parent) : QObject(parent) {
 	this->currentTime = QTime::currentTime();
 	T3TrackModel::addTrackFromCsv(INITIAL_LINE_CSV_DIR + QString("/T3RedLine.csv"), &stationToBlockIdMap, &MODU_ARGS);
 	T3TrackModel::addTrackFromCsv(INITIAL_LINE_CSV_DIR + QString("/T3GreenLine.csv"), &stationToBlockIdMap, &MODU_ARGS);
-	T3TrackModel::addTrackFromCsv(INITIAL_LINE_CSV_DIR + QString("/T3BlueLine.csv"), &stationToBlockIdMap, &MODU_ARGS);
+	//T3TrackModel::addTrackFromCsv(INITIAL_LINE_CSV_DIR + QString("/T3BlueLine.csv"), &stationToBlockIdMap, &MODU_ARGS);
 	T3TrackController::addPlcScriptFromCsv(":/T3KCPlcScript.js", &plcRuntime, &plcFunction);
 	//test place new train
 	QJsonArray path = T3CTCOffice::searchPathForAuthority("R_A_3", "R_B_5", &MODU_ARGS);
 	T3TrainModel::createNewTrain("TRA1", path, &MODU_ARGS);
 	T3TrackModel::placeTrain("TRA1", "R_A_3", true, &MODU_ARGS);
 
-	path = T3CTCOffice::searchPathForAuthority("R_B_5", "R_A_3", &MODU_ARGS);
-	T3TrainModel::createNewTrain("TRA2", path, &MODU_ARGS);
-	T3TrackModel::placeTrain("TRA2", "R_B_5", true, &MODU_ARGS);
+//	path = T3CTCOffice::searchPathForAuthority("R_B_5", "R_A_3", &MODU_ARGS);
+//	T3TrainModel::createNewTrain("TRA2", path, &MODU_ARGS);
+//	T3TrackModel::placeTrain("TRA2", "R_B_5", true, &MODU_ARGS);
 	//QProcess::startDetached("explorer " + filepathString);
-	//T3CTCOffice::toggleConnection(true, &MODU_ARGS);
+	T3CTCOffice::toggleConnection(true, &MODU_ARGS);
 	//localFileEnabled = true;
 	//db_push();
 	//localFileEnabled = false;
@@ -316,7 +322,7 @@ inline void T3Database::db_pull(unsigned int selector_in) {
 			fileIO.write(serializedObj);
 			fileIO.close();
 			QScopedPointer<QProcess> proc(new QProcess(this));
-			proc->start("notepad " + filepathString + QString("/%1.json").arg(currJsonTitleToPush));
+			proc->start(INITIAL_LINE_CSV_DIR + QString("JSONedit.exe ") + filepathString + QString("/%1.json").arg(currJsonTitleToPush));
 			while(!proc->waitForFinished(-1)) {}
 		} else
 			throw std::exception(fileIO.errorString().toUtf8());
@@ -528,8 +534,7 @@ inline void T3Database::timerEvent(QTimerEvent * event) {
 	//update time
 	this->currentTime = this->currentTime.addMSecs(100 * static_cast<int>(timerRate));
 	Q_EMIT onCurrentTimeChanged();
-	//check queue
-	ctc_iterate();
+	if(!busy) nextClockCycle();
 
 }
 
@@ -547,32 +552,35 @@ inline void T3Database::setTimerRate(int rate) {
 
 inline void T3Database::nextClockCycle() {
 	//===========================CTC OFFICE===============================
-
-	//把所有比当前时间小的请求全部取出
-	const QList<QJsonObject> requestsReady
-		= T3CTCOffice::popFromDispatchQueueAtTime(&(this->dispatchQueue), currentTime);
-
+	busy = true;
+//	//把所有比当前时间小的请求全部取出
+	QList<QJsonObject> requestsReady = T3CTCOffice::popFromDispatchQueueAtTime(&(this->dispatchQueue), currentTime);
 	//把每一个request都dispatch出去
 
 	//火车当前会占用一些区块,更新train model上的occupancy plc output
+	T3TrainModel::createNewTrainFromDispatchRequests(&requestsReady, &this->MODU_ARGS);
 	T3TrackModel::placeTrainFromDispatchRequest(&requestsReady, &this->MODU_ARGS);
 	T3TrackModel::updateTrainOccupancyOnAllBlocks(&this->MODU_ARGS);
-	T3TrackModel::updateTrainPositionOnAllBlocks(&this->MODU_ARGS);
-
-	//===========================TRACK CONTROLLER===============================
-
-	//--因为有了新的authority和train occupancy，在每一个block上运行plc程序，判定新的状态
 	T3TrackController::processAllPlc(&this->plcRuntime, &this->plcFunction, &this->MODU_ARGS);
+//	T3TrackModel::updateTrainPositionOnAllBlocks(&this->MODU_ARGS);
 
-	//===========================TRAIN MODEL & TRACK MODEL===============================
+//	//===========================TRACK CONTROLLER===============================
 
-	//--利用TRAIN MODEL的现有速度，计算位移，并且在TRACK MODEL上更新
+//	//--因为有了新的authority和train occupancy，在每一个block上运行plc程序，判定新的状态
+
+
+//	//===========================TRAIN MODEL & TRACK MODEL===============================
+
+//	//--利用TRAIN MODEL的现有速度，计算位移，并且在TRACK MODEL上更新
 	T3TrainModel::createNewTrainFromDispatchRequests(&requestsReady, &this->MODU_ARGS);
-	T3TrainModel::embarkAndDisembarkPassangerOnAllTrains(&this->MODU_ARGS);
+//	T3TrainModel::embarkAndDisembarkPassangerOnAllTrains(&this->MODU_ARGS);
+	T3TrainModel::updateTrainVelocityOnAllTrains(&this->MODU_ARGS);
 
-	T3TrainController::updateControlSystemsOnAllTrains(currentTime, &this->MODU_ARGS);
+//	T3TrainController::updateControlSystemsOnAllTrains(currentTime, &this->MODU_ARGS);
 	T3TrainController::updatePiOnAllTrains(&this->MODU_ARGS);
+
 	db_push();
+	busy = false;
 }
 
 #endif // T3Database_H

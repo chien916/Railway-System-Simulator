@@ -67,7 +67,7 @@ inline void T3TrainController::setCtrlParams(const QString trainId, QJsonArray m
 	SET_TRAIN_F(trainId, "COM[NC_NM]_RDOOR", metaInfo.at(3).toBool(), argsref);
 	SET_TRAIN_F(trainId, "COM[NC_NM]_EXTLIGHT", metaInfo.at(4).toBool(), argsref);
 	SET_TRAIN_F(trainId, "COM[NC_NM]_INTLIGHT", metaInfo.at(5).toBool(), argsref);
-	SET_TRAIN_F(trainId, "NC_R", metaInfo.at(6).toDouble(), argsref);
+	SET_TRAIN_F(trainId, "NC_R", MPH2KMH_F(metaInfo.at(6).toDouble()), argsref);
 }
 
 inline QJsonArray T3TrainController::getMetaInfo(const QString trainId, MODU_ARGS_REF argsref) {
@@ -78,8 +78,8 @@ inline QJsonArray T3TrainController::getMetaInfo(const QString trainId, MODU_ARG
 	metaInfo.push_back(GET_TRAIN_F(trainId, "COM[NC_NM]_EXTLIGHT", argsref).toBool());//3
 	metaInfo.push_back(GET_TRAIN_F(trainId, "COM[NC_NM]_INTLIGHT", argsref).toBool());//4
 	metaInfo.push_back(GET_TRAIN_F(trainId, "COM[NC_NM]_EBRAKE", argsref).toBool());//5
-	metaInfo.push_back(GET_TRAIN_F(trainId, "NC_R", argsref).toFloat());//current set point 6
-	metaInfo.push_back(GET_TRAIN_F(trainId, "NC_PREVY", argsref).toFloat());//7 current velocity
+	metaInfo.push_back(qRound(KMH2MPH_F(GET_TRAIN_F(trainId, "NC_R", argsref).toFloat()))); //current set point 6
+	metaInfo.push_back(qRound(KMH2MPH_F(GET_TRAIN_F(trainId, "NC_PREVY", argsref).toFloat()) )); //7 current velocity
 	{
 		const float e = GET_TRAIN_F(trainId, "NC_PREVE", argsref).toFloat();
 		const float kp = GET_TRAIN_F(trainId, "NC_KP", argsref).toFloat();
@@ -87,11 +87,11 @@ inline QJsonArray T3TrainController::getMetaInfo(const QString trainId, MODU_ARG
 		const float p = e * kp;
 		const float sum_e =  GET_TRAIN_F(trainId, "NC_SUME", argsref).toFloat();
 		const float i = ki * sum_e;
-		metaInfo.push_back(e);//8 error
-		metaInfo.push_back(p);//9 p
-		metaInfo.push_back(i);//10 i
-		metaInfo.push_back(kp);//11
-		metaInfo.push_back(ki);//12
+		metaInfo.push_back(qRound(e)); //8 error
+		metaInfo.push_back(qRound(p)); //9 p
+		metaInfo.push_back(qRound(i)); //10 i
+		metaInfo.push_back(QString::number(kp, 'f', 4)); //11
+		metaInfo.push_back(QString::number(ki, 'f', 4)); //12
 	}
 	{
 		const QString blockId = GET_TRAIN_F(trainId, "NM_BLOCKID", argsref).toString();
@@ -99,9 +99,9 @@ inline QJsonArray T3TrainController::getMetaInfo(const QString trainId, MODU_ARG
 			qFatal("T3TrainController::getMetaInfo() -> BLOCK ID is empty.");
 		const QString BCNPLCOUT = GET_TRACKVAR_F(blockId, "COM[KC|KM]_BCNPLCOUT", argsref).toString();
 		metaInfo.push_back(static_cast<bool>(BCNPLCOUT[28] == '1'));//13 underground
-		metaInfo.push_back(static_cast<float>(BCNPLCOUT.midRef(10, 8).toUInt(nullptr, 2)));//14 commanded speed
+		metaInfo.push_back((BCNPLCOUT.midRef(10, 8).toUInt(nullptr, 2)));//14 commanded speed
 		metaInfo.push_back(static_cast<bool>(BCNPLCOUT[0] == '1'));//15 authority
-		metaInfo.push_back(static_cast<float>(BCNPLCOUT.midRef(2, 8).toUInt(nullptr, 2)));//16 authority block number
+		metaInfo.push_back((BCNPLCOUT.midRef(2, 8).toUInt(nullptr, 2)));//16 authority block number
 		if(BCNPLCOUT[26] == '1' && BCNPLCOUT[27] == '1') {
 			metaInfo.push_back(QString("PLATFORM | TRAIN |          "));
 		} else if(BCNPLCOUT[26] == '1') {
@@ -112,7 +112,7 @@ inline QJsonArray T3TrainController::getMetaInfo(const QString trainId, MODU_ARG
 			metaInfo.push_back(QString(""));
 		}//17 stationinfo string
 	}
-	metaInfo.push_back(GET_TRAIN_F(trainId, "NC_U", argsref).toFloat());//18 currPower
+	metaInfo.push_back(qAbs(qRound(GET_TRAIN_F(trainId, "NC_U", argsref).toFloat() / 1000))); //18 currPower
 
 	return QJsonArray::fromVariantList(metaInfo);
 }
@@ -166,18 +166,12 @@ inline void T3TrainController::updatePiOnAllTrains(MODU_ARGS_REF argsref) {
 		QString trainId = currTrain.value("NM_ID").toString();
 		QString blockId = currTrain.value("NM_BLOCKID").toString();
 		QString BCNPLCOUT = GET_TRACKVAR_F(blockId, "COM[KC|KM]_BCNPLCOUT", argsref).toString();
-		//retrieve pid data from train database
 		float r = currTrain.value(("NC_R")).toDouble();
-		//float prev_e = currTrain.value(("NC_PREVE")).toDouble();
 		float prev_y = currTrain.value(("NC_PREVY")).toDouble();
 		float sum_e = currTrain.value(("NC_SUME")).toDouble();
 		float dt = currTrain.value(("NC_DT")).toDouble();
 		float kp = currTrain.value(("NC_KP")).toDouble();
 		float ki = currTrain.value(("NC_KI")).toDouble();
-		if(currTrain.value("COM[NC_NM]_EBRAKE").toBool() || currTrain.value("COM[NC_NM]_SBRAKE").toBool()) {
-			if(r != 0)
-				SET_TRAIN_F(trainId, "NC_R", 0.0f, argsref);//force train to stop
-		}
 		if((BCNPLCOUT.at(26) == '1' || BCNPLCOUT.at(2) == '1') ) {//if at station
 			int secondsLeft = currTrain.value("COM[NC_NM]_SECLEFT").toInt();
 			if(secondsLeft == -1) {
@@ -187,14 +181,34 @@ inline void T3TrainController::updatePiOnAllTrains(MODU_ARGS_REF argsref) {
 			}
 		}
 
+
 		//	//calculate new values
 		float e = r - prev_y;
-		float P = kp * e;
-		float I = ki * sum_e * dt;
+		float P = kp  * e;
+		float I = ki  * sum_e * dt * 1e-15;
 		//float D = ki * (prev_e + e) * dt * 0.5;//trapozoidal integration
-		float u = P + I ;
-		SET_TRAIN_F(trainId, "NC_PREVE", e, argsref);
-		SET_TRAIN_F(trainId, "NC_U", u, argsref);
+		//if(P < 100) P = 0;
+		//if(I < 5) I = 0;
+		float u = (P + I) / 100;
+		if(currTrain.value("COM[NC_NM]_EBRAKE").toBool() && prev_y > 0) {
+			u = -0.12;
+		} else if(currTrain.value("COM[NC_NM]_SBRAKE").toBool() && prev_y > 0) {
+			u = -0.273;
+		}
+		float y = prev_y + u;
+		if(qAbs(e) > 10)sum_e += e;
+
+		if(currTrain.value("COM[NC_NM]_EBRAKE").toBool() || currTrain.value("COM[NC_NM]_SBRAKE").toBool()) {
+			if(qAbs(prev_y) < 3) {
+				sum_e = 0;
+				e = 0;
+			}
+		}
+		SET_TRAIN_F(trainId, "NC_SUME", (sum_e), argsref);
+		SET_TRAIN_F(trainId, "NC_PREVE", (e), argsref);
+		SET_TRAIN_F(trainId, "NC_U", (581372 * u), argsref);
+		SET_TRAIN_F(trainId, "NC_PREVY", y, argsref);
+		SET_TRAIN_F(trainId, "NM_ACCELERATION", qMax(0.0f, y - prev_y), argsref);
 	}
 }
 

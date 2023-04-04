@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
 		QScopedPointer<T3Database> t3database(new T3Database());
 		//	QScopedPointer<T3UnitTest> t3unittest(new T3UnitTest(t3database.data()));
 		//T3Database t3database;
-		t3database->startTimer(100);//100 msecond timer
+		t3database->startTimer(1000);//100 msecond timer
 		engine.rootContext()->setContextProperty("t3databaseQml", t3database.data());
 
 		engine.load(url);

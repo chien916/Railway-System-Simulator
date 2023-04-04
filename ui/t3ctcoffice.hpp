@@ -463,24 +463,24 @@ inline void T3CTCOffice::toggleConnection(bool newConnectionState, MODU_ARGS_REF
 
 inline void T3CTCOffice::setAuthorityFromPath(const QJsonArray *authorityPath, bool b, MODU_ARGS_REF argsref) {
 	QString pathAsString;
-	if(!b) {
+	if(b) {
 		for(qsizetype i = 0; i < authorityPath->size(); ++i) {
 			if(i > 0) pathAsString += "|";
 			pathAsString = pathAsString + authorityPath->at(i).toString();
 		}
 	}
-	for(qsizetype k = 0; k < authorityPath->size(); ++k) {
+	for(qsizetype k = 0; k < authorityPath->size() - 1; ++k) {
 		QPair<QString, QString> blockIdPair = {authorityPath->at(k).toString(), authorityPath->at(k + 1).toString()};
 		(*std::get<1>(*argsref))(blockIdPair.first, "CTC_AUTHPATH", std::get<3>(*argsref), pathAsString);
 		QString CTCPLCIO = (*std::get<0>(*argsref))(blockIdPair.first, "COM[CTC|KC]_CTCPLCIO", std::get<3>(*argsref)).toString();
-		QVarLengthArray<bool, 2> authorityDirection =
-			(!b && k == authorityPath->size() - 1)
-			? determineAuthorityDirection(blockIdPair.first, blockIdPair.second, argsref)
-			: std::initializer_list<bool> {false, false};
-		QString numberOfBlockAuthorizing = !b ? QString::number(static_cast<uint8_t>(authorityPath->size() - k), 2).rightJustified(8, '0') : QString(8, '0');
+		QVarLengthArray<bool, 2> authorityDirection = determineAuthorityDirection(blockIdPair.first, blockIdPair.second, argsref);
+//			(b && k <= authorityPath->size() - 1)
+		/*? */
+//			: std::initializer_list<bool> {false, false};
+		QString numberOfBlockAuthorizing = b ? QString::number(static_cast<uint8_t>(authorityPath->size() - k), 2).rightJustified(8, '0') : QString(8, '0');
 		Q_ASSERT(authorityDirection.size() == 2);
-		CTCPLCIO[16] = authorityDirection.at(0) ? '1' : '0';
-		CTCPLCIO[17] = authorityDirection.at(1) ? '1' : '0';
+		CTCPLCIO[11] = authorityDirection.at(0) ? '1' : '0';
+		CTCPLCIO[12] = authorityDirection.at(1) ? '1' : '0';
 		for(uint i = 20; i >= 13; --i) {
 			CTCPLCIO[i] = numberOfBlockAuthorizing[i - 13];
 		}

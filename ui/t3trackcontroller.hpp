@@ -98,6 +98,7 @@ inline void T3TrackController::processAllPlc(QJSEngine *plcRuntime, QJSValue *pl
 inline QJsonArray T3TrackController::readPlcToMetaInfo(const QString blockId, MODU_ARGS_REF argsref) {
 	QString KCPLCIN = GET_TRACKVAR_F(blockId, "KC_KCPLCIN", argsref).toString();
 	QString BCNPLCOUT = GET_TRACKVAR_F(blockId, "COM[KC|KM]_BCNPLCOUT", argsref).toString();
+	QString KMPLCIO = GET_TRACKVAR_F(blockId, "COM[KC|KM]_KMPLCIO", argsref).toString();
 	QList<QVariant> metaInfo = {
 		KCPLCIN.at(1) == '1',//0-maintance mode
 		static_cast<float>(KMH2MPH_F(GET_TRACKCON_F(blockId, "speedLimit", argsref).toUInt())),//1-speed limit
@@ -145,22 +146,20 @@ inline QJsonArray T3TrackController::readPlcToMetaInfo(const QString blockId, MO
 	};
 	{
 		//left signal
-		QStringRef leftSignal = KCPLCIN.midRef(10, 2);
+		QStringRef leftSignal = KMPLCIO.midRef(16, 2);
 		if(leftSignal == "01") metaInfo2[4] = QString("yellow");
 		else if(leftSignal == "10") metaInfo2[4] = QString("green");
 		else metaInfo2[4] = QString("red");
 
 		//right signal
-		QStringRef rightSignal = KCPLCIN.midRef(14, 2);
+		QStringRef rightSignal = KMPLCIO.midRef(20, 2);
 		if(rightSignal == "01") metaInfo2[7] = QString("yellow");
 		else if(rightSignal == "10") metaInfo2[7] = QString("green");
 		else metaInfo2[7] = QString("red");
 
 		//switch position
-		QStringRef switchPosition = KCPLCIN.midRef(26, 2);
-		if(switchPosition == "11") metaInfo2[5] = QString("top");
-		else if(switchPosition == "01")metaInfo2[5] = QString("bottom");
-		else metaInfo2[5] = QString("auto");
+		if(KMPLCIO[18] == '1') metaInfo2[5] = QString("top");
+		else metaInfo2[5] = QString("bottom");;
 	}
 	/**
 	 *  * inputs from track controller

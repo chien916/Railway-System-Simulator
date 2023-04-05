@@ -407,11 +407,11 @@ inline void T3CTCOffice::writeToPlcInputFromMetaInfo(const QString blockId, cons
 		CTCPLCIO[0] =  '1';//if sent always connected assumed
 		CTCPLCIO[1] = metaInfo.at(0).toBool() ? '1' : '0';
 		//authority is handled from previous step
-		QString truncatedSuggestedSpeed = QString::number(static_cast<uint8_t>(metaInfo.at(1).toDouble()), 2).rightJustified(8, '0');
+		QString truncatedSuggestedSpeed = QString::number(static_cast<uint8_t>(MPH2KMH_F(metaInfo.at(1).toDouble())), 2).rightJustified(8, '0');
 		for(uint i = 9; i >= 2; --i) {
 			CTCPLCIO[i] = truncatedSuggestedSpeed[i - 2];
 		}
-		CTCPLCIO[10] =  metaInfo.at(2).toBool() ? '1' : '0';
+		CTCPLCIO[21] =  metaInfo.at(2).toBool() ? '1' : '0';
 	}
 	SET_TRACKVAR_F(blockId, "COM[CTC|KC]_CTCPLCIO", CTCPLCIO, argsref);
 }
@@ -426,7 +426,7 @@ inline QJsonArray T3CTCOffice::readPlcInputToMetaInfo(const QString blockId, MOD
 		truncatedSuggestedSpeed[i - 2] = CTCPLCIO[i];
 	}
 	std::get<0>(metaInfoValue) = CTCPLCIO[1] == '1';
-	std::get<1>(metaInfoValue) = truncatedSuggestedSpeed.toInt(nullptr, 2);
+	std::get<1>(metaInfoValue) = MPH2KMH_F(truncatedSuggestedSpeed.toInt(nullptr, 2));
 	std::get<2>(metaInfoValue) = CTCPLCIO[10] == '1';
 	std::get<3>(metaInfoValue) = AUTHPATH_splitted.last();
 	return QJsonArray{std::get<0>(metaInfoValue), std::get<1>(metaInfoValue), std::get<2>(metaInfoValue), std::get<3>(metaInfoValue)};
@@ -484,6 +484,7 @@ inline void T3CTCOffice::setAuthorityFromPath(const QJsonArray *authorityPath, b
 		for(uint i = 20; i >= 13; --i) {
 			CTCPLCIO[i] = numberOfBlockAuthorizing[i - 13];
 		}
+		CTCPLCIO[1] = b ? '1' : '0';
 		Q_ASSERT(CTCPLCIO.size() == 32);
 		(*std::get<1>(*argsref))(blockIdPair.first, "COM[CTC|KC]_CTCPLCIO", std::get<3>(*argsref), CTCPLCIO);
 	}

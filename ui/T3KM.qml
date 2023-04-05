@@ -15,27 +15,28 @@ Item {
 			]
 		t3databaseQml.km_setIOFromMetaInfo(blockId_s,metaInfo_A);
 	}
-	function db2view(){
+	function db2view(includeIO_b){
 		if(blockId_s===""||!repe_dataFields) return;
 		let displayString_sA = t3databaseQml.km_getDisplayStrings(blockId_s);
 		for(let i = 0;i<displayString_sA.length;++i){
 			repe_dataFields.itemAt(i).stringToDisp_s = displayString_sA[i];
 		}
-		let metaInfo_A = t3databaseQml.km_getIOFromMetaInfo(blockId_s);
-		cust_envTemp.valueratio_r = metaInfo_A[0]/cust_envTemp.maxValue_r;
-		butt_brokenRail.currState_b = metaInfo_A[1];
-		butt_powerFailure.currState_b = metaInfo_A[2];
-		butt_trackCircuit.currState_b = metaInfo_A[3];
+		if(includeIO_b){
+			let metaInfo_A = t3databaseQml.km_getIOFromMetaInfo(blockId_s);
+			cust_envTemp.valueratio_r = metaInfo_A[0]/cust_envTemp.maxValue_r;
+			butt_brokenRail.currState_b = metaInfo_A[1];
+			butt_powerFailure.currState_b = metaInfo_A[2];
+			butt_trackCircuit.currState_b = metaInfo_A[3];
+		}
 	}
 	onBlockId_sChanged: {
 		rect_frontHelper.runAnimation();
-		db2view();
-
+		db2view(true);
 	}
 	Connections{
 		target: t3databaseQml
 		function onOnTrackVariablesObjectsChanged(){
-			db2view();
+			db2view(false);
 		}
 	}
 	implicitHeight: 600

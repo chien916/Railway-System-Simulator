@@ -13,7 +13,8 @@ Item {
 	readonly property bool stationOnRight_b: kmPlcIo_s.charCodeAt(27)>48
 	readonly property bool hasCrossingGate_b:kmPlcIo_s.charCodeAt(29)>48
 	readonly property bool crossingGateDown_b:kmPlcIo_s.charCodeAt(19)>48
-	readonly property bool failure_b: kmPlcIo_s.charCodeAt(6)>48||kmPlcIo_s.charCodeAt(7)>48
+	readonly property bool failure_b:
+		kmPlcIo_s.charCodeAt(6)>48||kmPlcIo_s.charCodeAt(7)>48||kmPlcIo_s.charCodeAt(30)>48
 	readonly property bool authority_b: bcnPlcOut_s.substring(2,10).includes("1")
 	readonly property bool isUnderground_b:kmPlcIo_s.charCodeAt(28)>48
 	readonly property bool canMoveForward_b:kmPlcIo_s.charCodeAt(22)>48
@@ -21,8 +22,8 @@ Item {
 	readonly property bool trainOnBlock_b:kmPlcIo_s.charCodeAt(3)>48
 	readonly property bool trainMovingForward_b:true
 	readonly property bool maintananceMode_b:false
-	readonly property int leftSignalLight_i:parseInt(bcnPlcOut_s.substring(16,18),2)
-	readonly property int rightSignalLight_i:parseInt(bcnPlcOut_s.substring(20,21),2)
+	readonly property int leftSignalLight_i:parseInt(kmPlcIo_s.substring(16,18),2)
+	readonly property int rightSignalLight_i:parseInt(kmPlcIo_s.substring(20,22),2)
 
 	 property color color_c: {//probably needs change
 		if(hovered2_b)

@@ -53,9 +53,6 @@ Item {
 				readOnly_b:false
 				paramConfig_A:"F_T_Maintance Mode_"
 				width: col_column.width
-				onValueratio_rChanged: {
-					if(valueratio_r===0) root.db2view(false);
-				}
 			}
 			T3ParamUnit{
 				id:cust_suggestedSpeed
@@ -203,6 +200,7 @@ Item {
 				//console.log(tInp_dispatchFrom.text)
 				if(tInp_dispatchFrom.text==="  "){
 					view2db();
+					db2view(true);
 					applyClicked();
 					return;
 				}
@@ -214,6 +212,7 @@ Item {
 							return;
 						}
 						view2db();
+						db2view(true);
 						applyClicked();
 						return;
 					}
@@ -290,7 +289,8 @@ Item {
 	function db2view(maintanceModeIncluded_b:bool){
 		if(blockId_s==="")return;
 		let metaInfo_A = t3databaseQml.ctc_readPlcInputFromMetaInfo(blockId_s);
-		custom_maintainanceMode.valueratio_r = metaInfo_A[0]?1:0;
+		if(maintanceModeIncluded_b)
+			custom_maintainanceMode.valueratio_r = metaInfo_A[0]?1:0;
 		cust_suggestedSpeed.valueratio_r = metaInfo_A[1]/100;
 		cust_switchDial.dialDialValue_r = metaInfo_A[2]?0.36:0;
 		tInp_dispatchFrom.text = metaInfo_A[3];
@@ -301,7 +301,7 @@ Item {
 		let metaInfo_A = [
 				custom_maintainanceMode.valueratio_r>0.5,
 				cust_suggestedSpeed.actualValue_r,
-				cust_switchDial.currValue_n===((switchSide_s==="left")?0.36:0.64),
+				cust_switchDial.currValue_n===0.36,
 				tInp_dispatchFrom.text.split(" ").join("_")
 			]
 		t3databaseQml.ctc_writeToPlcInputFromMetaInfo(blockId_s,metaInfo_A);

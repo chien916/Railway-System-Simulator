@@ -8,6 +8,7 @@
 #include "t3traincontroller.hpp"
 #include "t3ctcoffice.hpp"
 //#include "t3trackmodel.hpp"
+#include <QSerialPort>
 
 
 /**
@@ -174,7 +175,7 @@ class T3Database: public QObject {
 
 
   private:
-	void ctc_iterate();
+
 	//====================================================
 	//==================TRACK-CONTROLLER==================
 	//=====================铁路铁轨控制=====================
@@ -191,7 +192,7 @@ class T3Database: public QObject {
   signals:
   private:
 
-	void kc_iterate();
+
 	//====================================================
 	//=====================TRACK-MODEL====================
 	//=====================铁路铁轨模型=====================
@@ -205,7 +206,7 @@ class T3Database: public QObject {
   signals:
 
   private:
-	void km_iterate();
+
 
 	//====================================================
 	//=====================TRAIN-MODEL====================
@@ -215,11 +216,12 @@ class T3Database: public QObject {
 	Q_INVOKABLE QJsonArray nm_getAllTrainIds();
 	Q_INVOKABLE void nm_removeTrain(const QString trainId);
 	Q_INVOKABLE void nm_setFailureOrBrake(const QString trainId, const int index, const bool value);
+	Q_INVOKABLE void nm_setTrainTemperature(const QString trainId, const unsigned int temperatureValue);
 	Q_INVOKABLE QJsonArray nm_getStringsFromMetaInfo(const QString trainId);
   signals:
 
   private:
-	void nm_iterate();
+
 
 	//====================================================
 	//==================TRAIN-CONTROLLER==================
@@ -232,7 +234,12 @@ class T3Database: public QObject {
 	Q_INVOKABLE QJsonArray nc_getMetaInfo(const QString trainId);
   signals:
   private:
-	void nc_iterate();
+	//====================================================
+	//==================HARDWARE ADAPTER==================
+	//=====================铁道控制模型=====================
+	//====================================================
+  public:
+	QSerialPort serialPort;
 	//====================================================
 	//=====================MICELLANOUS====================
 	//=========================其他========================
@@ -279,9 +286,9 @@ inline T3Database::T3Database(QObject * parent) : QObject(parent) {
 	//T3TrackModel::addTrackFromCsv(INITIAL_LINE_CSV_DIR + QString("/T3BlueLine.csv"), &stationToBlockIdMap, &MODU_ARGS);
 	T3TrackController::addPlcScriptFromCsv(":/T3KCPlcScript.js", &plcRuntime, &plcFunction);
 	//test place new train
-	QJsonArray path = T3CTCOffice::searchPathForAuthority("R_A_3", "R_B_5", &MODU_ARGS);
+	QJsonArray path = T3CTCOffice::searchPathForAuthority("R_G_21", "R_G_23", &MODU_ARGS);
 	T3TrainModel::createNewTrain("TRA1", path, &MODU_ARGS);
-	T3TrackModel::placeTrain("TRA1", "R_A_3", true, &MODU_ARGS);
+	T3TrackModel::placeTrain("TRA1", "R_G_21", true, &MODU_ARGS);
 
 //	path = T3CTCOffice::searchPathForAuthority("R_B_5", "R_A_3", &MODU_ARGS);
 //	T3TrainModel::createNewTrain("TRA2", path, &MODU_ARGS);
@@ -384,13 +391,6 @@ inline void T3Database::ctc_toggleConnection(bool newConnectionState) {
 	db_push(TrackVariablesObjects);
 }
 
-/**
- * @brief T3Database::ctc_iterate
- * 检查当前时间，并且判断发车队列中有没有需要发车的（当前时间大于计划时间)
- */
-inline void T3Database::ctc_iterate() {
-	//
-}
 
 //====================================================
 //==================TRACK-CONTROLLER==================
@@ -422,10 +422,6 @@ inline void T3Database::kc_processPlc(const QString blockId) {
 	db_push(TrackVariablesObjects);
 }
 
-inline void T3Database::kc_iterate() {
-	T3TrackController::iterate(&MODU_ARGS, &plcRuntime, &plcFunction);
-	db_push(TrackVariablesObjects);
-}
 
 inline QJsonArray T3Database::km_getDisplayStrings(const QString blockId) {
 	return T3TrackModel::getDisplayStrings(blockId, &MODU_ARGS);
@@ -458,9 +454,7 @@ inline QJsonArray T3Database::km_getAllTrackIds() {
 	return T3TrackModel::getAllTrackIds(&MODU_ARGS);
 }
 
-inline void T3Database::km_iterate() {
 
-}
 
 inline QJsonArray T3Database::nm_getAllTrainIds() {
 	return T3TrainModel::getAllTrainIds(&MODU_ARGS);
@@ -477,9 +471,7 @@ inline QJsonArray T3Database::nm_getAllTrainIds() {
 
 inline void T3Database::nm_removeTrain(const QString trainId) {
 	T3TrainModel::removeTrain(trainId, &MODU_ARGS);
-	Q_EMIT onTrainObjectsChanged();
 	db_push(TrainObjects);
-	Q_INVOKABLE void removeTrainFromCtc(const QString trainId);
 }
 
 inline void T3Database::nm_setFailureOrBrake(const QString trainId, const int index, const bool value) {
@@ -487,12 +479,13 @@ inline void T3Database::nm_setFailureOrBrake(const QString trainId, const int in
 	db_push(TrainObjects);
 }
 
-inline QJsonArray T3Database::nm_getStringsFromMetaInfo(const QString trainId) {
-	return T3TrainModel::getStringsFromMetaInfo(trainId, &MODU_ARGS);
+inline void T3Database::nm_setTrainTemperature(const QString trainId, const unsigned int temperatureValue) {
+	T3TrainModel::setCabinTemperature(trainId, temperatureValue, &MODU_ARGS);
+	db_push(TrainObjects);
 }
 
-inline void T3Database::nm_iterate() {
-
+inline QJsonArray T3Database::nm_getStringsFromMetaInfo(const QString trainId) {
+	return T3TrainModel::getStringsFromMetaInfo(trainId, &MODU_ARGS);
 }
 
 
@@ -502,9 +495,6 @@ inline void T3Database::nm_iterate() {
 //=====================铁路火车控制=====================
 //====================================================
 
-inline void T3Database::nc_iterate() {
-
-}
 
 
 
@@ -532,7 +522,7 @@ inline void T3Database::timerEvent(QTimerEvent * event) {
 	Q_UNUSED(event);
 	if(this->timerRunning == false) return;
 	//update time
-	this->currentTime = this->currentTime.addMSecs(100 * static_cast<int>(timerRate));
+	this->currentTime = this->currentTime.addMSecs(1000 * static_cast<int>(timerRate));
 	Q_EMIT onCurrentTimeChanged();
 	if(!busy) nextClockCycle();
 
@@ -553,30 +543,14 @@ inline void T3Database::setTimerRate(int rate) {
 inline void T3Database::nextClockCycle() {
 	//===========================CTC OFFICE===============================
 	busy = true;
-//	//把所有比当前时间小的请求全部取出
 	QList<QJsonObject> requestsReady = T3CTCOffice::popFromDispatchQueueAtTime(&(this->dispatchQueue), currentTime);
-	//把每一个request都dispatch出去
-
-	//火车当前会占用一些区块,更新train model上的occupancy plc output
+	T3TrackController::processAllPlc(&this->plcRuntime, &this->plcFunction, &this->MODU_ARGS);
+	T3TrackModel::updateTrainOccupancyOnAllBlocks(&this->MODU_ARGS);
+	T3TrackModel::updateTrainPositionOnAllBlocks(&this->MODU_ARGS);
 	T3TrainModel::createNewTrainFromDispatchRequests(&requestsReady, &this->MODU_ARGS);
 	T3TrackModel::placeTrainFromDispatchRequest(&requestsReady, &this->MODU_ARGS);
-	T3TrackModel::updateTrainOccupancyOnAllBlocks(&this->MODU_ARGS);
-	T3TrackController::processAllPlc(&this->plcRuntime, &this->plcFunction, &this->MODU_ARGS);
-//	T3TrackModel::updateTrainPositionOnAllBlocks(&this->MODU_ARGS);
-
-//	//===========================TRACK CONTROLLER===============================
-
-//	//--因为有了新的authority和train occupancy，在每一个block上运行plc程序，判定新的状态
-
-
-//	//===========================TRAIN MODEL & TRACK MODEL===============================
-
-//	//--利用TRAIN MODEL的现有速度，计算位移，并且在TRACK MODEL上更新
-	T3TrainModel::createNewTrainFromDispatchRequests(&requestsReady, &this->MODU_ARGS);
-//	T3TrainModel::embarkAndDisembarkPassangerOnAllTrains(&this->MODU_ARGS);
 	T3TrainModel::updateTrainVelocityOnAllTrains(&this->MODU_ARGS);
-
-//	T3TrainController::updateControlSystemsOnAllTrains(currentTime, &this->MODU_ARGS);
+	T3TrainController::updateControlSystemsOnAllTrains(currentTime, &MODU_ARGS);
 	T3TrainController::updatePiOnAllTrains(&this->MODU_ARGS);
 
 	db_push();

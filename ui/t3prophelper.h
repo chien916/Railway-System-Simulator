@@ -28,10 +28,15 @@ using MODU_ARGS_REF
 #define M2FOOT_F(VAL) 3.28084f*static_cast<float>(VAL)
 #define FOOT2M_F(VAL) static_cast<float>(VAL)/3.28084f
 
+#define KMH2MS_F(VAL) 0.27778f*static_cast<float>(VAL)
+#define MS2KMH_F(VAL) static_cast<float>(VAL)/0.27778f
+
 #define FIREBASE_URL "https://sprn2023-ece1140-default-rtdb.firebaseio.com/"
 #define INITIAL_LINE_CSV_DIR "C:/Users/YIQ25/Documents/Academics/ECE1140/Resources/"
 
 #define TRAINONBLOCK "KM_TRAINONBLOCK"
+
+
 
 
 

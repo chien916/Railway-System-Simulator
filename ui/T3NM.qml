@@ -1,9 +1,10 @@
 import QtQuick 2.12
-
+import QtQuick.Extras 1.4
+import QtQuick.Controls.Styles 1.4
 Item {
 	id:root
-	width: 1000
-	height: 350
+	width: 1200
+	height: 500
 
 	property string trainId_s:cust_trainSelector.currValue_s
 	onTrainId_sChanged:{
@@ -38,11 +39,19 @@ Item {
 		reap_trainConstantsDisplay2.itemAt(2).val_s = metaInfo_A[18];
 		reap_trainConstantsDisplay2.itemAt(3).val_s = metaInfo_A[20];
 		reap_trainConstantsDisplay2.itemAt(4).val_s = metaInfo_A[22];
+		text_trainTemperature.textContent_s = metaInfo_A[24];
+		gaug_trainTemperature.value = metaInfo_A[25];
+		text_crewCount.textContent_s = metaInfo_A[26];
+		text_passangerCount.textContent_s = metaInfo_A[27];
+		text_authorityGiven.textContent_s = metaInfo_A[28];
+		text_authorityCount.textContent_s = metaInfo_A[29];
+		text_stationInfo.textContent_s = metaInfo_A[30];
 		if(includeIO_b){
 			butt_brokenRail.currState_b = metaInfo_A[19];
 			butt_trackCircuit.currState_b = metaInfo_A[21];
 			butt_emergencyBrake.currState_b = metaInfo_A[4];
 			butt_powerFailure.currState_b = metaInfo_A[23];
+			cust_trainTemperature.valueratio_r = metaInfo_A[25]/cust_trainTemperature.maxValue_r;
 		}
 	}
 	Rectangle{
@@ -72,20 +81,462 @@ Item {
 			bottom:parent.bottom
 			margins: T3Styling.margin_r
 		}
+		isTrack_b: false
 		model_A: t3databaseQml?t3databaseQml.trainIds_QML:[[""]]
 		width: root.width*0.05
 	}
 
+
+
+	Rectangle{
+		id:rect_leftScreen
+		anchors{
+			left:cust_trainSelector.right
+			top:parent.top
+			bottom:cust_trainTemperature.top
+			leftMargin: T3Styling.margin_r
+			rightMargin: T3Styling.margin_r
+			topMargin:T3Styling.margin_r
+			bottomMargin:T3Styling.spacing_r
+		}
+		width: root.width*0.35
+		border.width: T3Styling.lineWidth_r
+		border.color: T3Styling.cFgSubSub_c
+		radius: T3Styling.spacing_r
+		color:T3Styling.cBgMain_c
+		Column{
+			id:colu_leftdoorInfo
+			spacing:T3Styling.spacing_r*1.5
+			anchors{
+				left:cVie_carView.left
+				right: parent.horizontalCenter
+				rightMargin: T3Styling.spacing_r*2
+				//top:rect_seperator1.bottom
+				//topMargin: T3Styling.spacing_r*2
+				top: parent.top
+				topMargin: T3Styling.margin_r
+			}
+			Rectangle{
+				height: T3Styling.fontSubSub_r
+				width: parent.width
+				color:"transparent"
+				T3Text{
+					width:parent.width
+					height:T3Styling.fontSubSub_r
+					textPixelSize_r: T3Styling.fontSubSub_r
+					textContent_s:"Left Door"
+					textColor_c: T3Styling.cFgSub_c
+					textAlign_s: "left"
+				}
+				T3Text{
+					id: 	text_rightDoorStatus
+					width:parent.width
+					height:T3Styling.fontSubSub_r
+					textPixelSize_r: T3Styling.fontSubSub_r
+					textContent_s: "N/A"
+					textColor_c:{
+						if(textContent_s==="OPEN") return T3Styling.cYellow_c
+						else return  T3Styling.cGreen_c
+					}
+					textAlign_s: "right"
+				}
+			}
+
+		}
+		Column{
+			id:colu_rightdoorInfo
+			spacing:T3Styling.spacing_r*1.5
+			anchors{
+				right:cVie_carView.right
+				left: parent.horizontalCenter
+				leftMargin: T3Styling.spacing_r*2
+				//top:rect_seperator1.bottom
+				//topMargin: T3Styling.spacing_r*2
+				top: parent.top
+				topMargin: T3Styling.margin_r
+			}
+			Rectangle{
+				height: T3Styling.fontSubSub_r
+				width: parent.width
+				color:"transparent"
+				T3Text{
+					width:parent.width
+					height:T3Styling.fontSubSub_r
+					textPixelSize_r: T3Styling.fontSubSub_r
+					textContent_s: "Right Door"
+					textColor_c: T3Styling.cFgSub_c
+					textAlign_s: "left"
+				}
+				T3Text{
+					id:text_leftDoorStatus
+					width:parent.width
+					height:T3Styling.fontSubSub_r
+					textPixelSize_r: T3Styling.fontSubSub_r
+					textContent_s: "N/A"
+					textColor_c:{
+						if(textContent_s==="OPEN") return T3Styling.cYellow_c
+						else return  T3Styling.cGreen_c
+					}
+					textAlign_s: "right"
+				}
+			}
+
+		}
+		T3NMCarView{
+			id:cVie_carView
+			anchors{
+				top:colu_leftdoorInfo.bottom
+				topMargin: T3Styling.spacing_r*1.5
+				left:rect_leftScreen.left
+				right:rect_leftScreen.right
+				leftMargin: T3Styling.margin_r
+				rightMargin: T3Styling.margin_r
+				bottom: colu_serviceBrakeInfo.top
+				bottomMargin:  T3Styling.spacing_r*1.5
+			}
+			leftDoorClosed_b: text_rightDoorStatus.textContent_s === "CLOSED"
+			rightDoorClosed_b: text_leftDoorStatus.textContent_s === "CLOSED"
+			brakeReleased_b: text_serviceBrakeStatus.textContent_s === "RELEASED"
+			brakeEmergency_b: text_emergencyBrakeStatus.textContent_s==="APPLIED"
+			//height: rect_leftScreen.height*0.35
+		}
+
+		Column{
+			id:colu_serviceBrakeInfo
+			spacing:T3Styling.spacing_r*1.5
+			anchors{
+				left:cVie_carView.left
+				right: parent.horizontalCenter
+				rightMargin: T3Styling.spacing_r*2
+				//top: cVie_carView.bottom
+				//topMargin: T3Styling.spacing_r*1.5
+				bottom:  rect_seperator2.top
+				bottomMargin: T3Styling.spacing_r*2
+			}
+			Rectangle{
+				height: T3Styling.fontSubSub_r
+				width: parent.width
+				color:"transparent"
+				T3Text{
+					width:parent.width
+					height:T3Styling.fontSubSub_r
+					textPixelSize_r: T3Styling.fontSubSub_r
+					textContent_s: "Service Brake"
+					textColor_c: T3Styling.cFgSub_c
+					textAlign_s: "left"
+				}
+				T3Text{
+					id:text_serviceBrakeStatus
+					width:parent.width
+					height:T3Styling.fontSubSub_r
+					textPixelSize_r: T3Styling.fontSubSub_r
+					textContent_s: "N/A"
+					textColor_c:{
+						if(textContent_s==="APPLIED") T3Styling.cYellow_c
+						else return T3Styling.cGreen_c
+					}
+					textAlign_s: "right"
+				}
+			}
+
+		}
+		Column{
+			id:colu_emergencyBrakeInfo
+			spacing:T3Styling.spacing_r*1.5
+			anchors{
+				right:cVie_carView.right
+				left: parent.horizontalCenter
+				leftMargin: T3Styling.spacing_r*2
+				//top:rect_seperator1.bottom
+				//topMargin: T3Styling.spacing_r*2
+				//top: cVie_carView.bottom
+				//topMargin: T3Styling.spacing_r*1.5
+				bottom:  rect_seperator2.top
+				bottomMargin: T3Styling.spacing_r*2
+			}
+
+			Rectangle{
+				height: T3Styling.fontSubSub_r
+				width: parent.width
+				color:"transparent"
+				T3Text{
+					width:parent.width
+					height:T3Styling.fontSubSub_r
+					textPixelSize_r: T3Styling.fontSubSub_r
+					textContent_s: "Emergency Brake"
+					textColor_c: T3Styling.cFgSub_c
+					textAlign_s: "left"
+				}
+				T3Text{
+					id:text_emergencyBrakeStatus
+					width:parent.width
+					height:T3Styling.fontSubSub_r
+					textPixelSize_r: T3Styling.fontSubSub_r
+					textContent_s: "N/A"
+					textColor_c:{
+						if(textContent_s=="APPLIED") T3Styling.cRed_c
+						else return T3Styling.cGreen_c
+					}
+					textAlign_s: "right"
+				}
+			}
+
+		}
+		Rectangle{
+			id:rect_seperator2
+			anchors{
+				left:cVie_carView.left
+				right: cVie_carView.right
+				bottom:rect_trainTemperatureContainer.top
+				bottomMargin: T3Styling.spacing_r*1.5
+			}
+			visible: true
+			height: T3Styling.lineWidth_r
+			radius: height
+			color: T3Styling.cFgSubSub_c
+		}
+		Gauge {
+			id:gaug_trainTemperature
+			anchors{
+				bottom:rect_passangerCount.top
+				bottomMargin: T3Styling.spacing_r*4
+				left:rect_seperator2.left
+				right:rect_seperator2.right
+			}
+			visible: true
+			minimumValue: 0
+			value: 50
+			maximumValue: 100
+			style: GaugeStyle {
+				valueBar: Rectangle {
+					implicitWidth: 16
+					color: T3Styling.cGreen_c
+					radius: T3Styling.spacing_r
+				}
+				foreground:Item{}
+				background:
+					Rectangle {
+					implicitWidth: 16
+					color: T3Styling.cBgSubSub_c
+					radius: T3Styling.spacing_r
+				}
+			}
+			orientation:Qt.Horizontal
+		}
+
+		Rectangle{
+			id:rect_trainTemperatureContainer
+			height: T3Styling.fontSubSub_r
+			anchors{
+				bottom:gaug_trainTemperature.top
+				bottomMargin: T3Styling.spacing_r*1.5
+				left:rect_seperator2.left
+				right:rect_seperator2.right
+			}
+			color:"transparent"
+			T3Text{
+				width:parent.width
+				height:T3Styling.fontSubSub_r
+				textPixelSize_r: T3Styling.fontSubSub_r
+				textContent_s: "Internal Train Temperature"
+				textColor_c: T3Styling.cFgSub_c
+				textAlign_s: "left"
+			}
+			T3Text{
+				id:text_trainTemperature
+				width:parent.width
+				height:T3Styling.fontSubSub_r
+				textPixelSize_r: T3Styling.fontSubSub_r
+				textContent_s: "N/A"
+				textColor_c:{
+					if(textContent_s=="APPLIED") T3Styling.cRed_c
+					else return T3Styling.cGreen_c
+				}
+				textAlign_s: "right"
+			}
+		}
+		Rectangle{
+			id:rect_seperator3
+			anchors{
+				left:cVie_carView.left
+				right: cVie_carView.right
+				bottom:rect_passangerCount.top
+				bottomMargin: T3Styling.spacing_r*1.5
+			}
+			visible: true
+			height: T3Styling.lineWidth_r
+			radius: height
+			color: T3Styling.cFgSubSub_c
+		}
+		Rectangle{
+			height: T3Styling.fontSubSub_r
+			anchors{
+				bottom: rect_seperator4.top
+				bottomMargin: T3Styling.spacing_r*1.5
+				left:rect_seperator2.left
+				right:parent.horizontalCenter
+				rightMargin: T3Styling.spacing_r*2
+			}
+			color:"transparent"
+			T3Text{
+				width:parent.width
+				height:T3Styling.fontSubSub_r
+				textPixelSize_r: T3Styling.fontSubSub_r
+				textContent_s: "Crew Count"
+				textColor_c: T3Styling.cFgSub_c
+				textAlign_s: "left"
+			}
+			T3Text{
+				id:text_crewCount
+				width:parent.width
+				height:T3Styling.fontSubSub_r
+				textPixelSize_r: T3Styling.fontSubSub_r
+				textContent_s: "N/A"
+				textColor_c:{
+					 T3Styling.cFgMain_c
+				}
+				textAlign_s: "right"
+			}
+		}
+		Rectangle{
+			id:rect_passangerCount
+			height: T3Styling.fontSubSub_r
+			anchors{
+				bottom: rect_seperator4.top
+				bottomMargin: T3Styling.spacing_r*1.5
+				right:rect_seperator2.right
+				left:parent.horizontalCenter
+				leftMargin: T3Styling.spacing_r*2
+			}
+			color:"transparent"
+			T3Text{
+				width:parent.width
+				height:T3Styling.fontSubSub_r
+				textPixelSize_r: T3Styling.fontSubSub_r
+				textContent_s: "Passanger Count"
+				textColor_c: T3Styling.cFgSub_c
+				textAlign_s: "left"
+			}
+			T3Text{
+				id:text_passangerCount
+				width:parent.width
+				height:T3Styling.fontSubSub_r
+				textPixelSize_r: T3Styling.fontSubSub_r
+				textContent_s: "N/A"
+				textColor_c:{
+					 T3Styling.cFgMain_c
+				}
+				textAlign_s: "right"
+			}
+		}
+		Rectangle{
+			id:rect_seperator4
+			anchors{
+				left:cVie_carView.left
+				right: cVie_carView.right
+				bottom: text_authorityGranted.top
+				bottomMargin: T3Styling.spacing_r*1.5
+			}
+			visible: true
+			height: T3Styling.lineWidth_r
+			radius: height
+			color: T3Styling.cFgSubSub_c
+		}
+		Rectangle{
+			id:text_authorityGranted
+			height: T3Styling.fontSubSub_r
+			anchors{
+				bottom: parent.bottom
+				bottomMargin: T3Styling.margin_r
+				left:rect_seperator2.left
+				right:parent.horizontalCenter
+				rightMargin: T3Styling.spacing_r*2
+			}
+			color:"transparent"
+			T3Text{
+				width:parent.width
+				height:T3Styling.fontSubSub_r
+				textPixelSize_r: T3Styling.fontSubSub_r
+				textContent_s: "Authority Granted"
+				textColor_c: T3Styling.cFgSub_c
+				textAlign_s: "left"
+			}
+			T3Text{
+				id:text_authorityGiven
+				width:parent.width
+				height:T3Styling.fontSubSub_r
+				textPixelSize_r: T3Styling.fontSubSub_r
+				textContent_s: "N/A"
+				textColor_c:{
+					if(textContent_s=="NO") T3Styling.cRed_c
+					else return  T3Styling.cFgMain_c
+				}
+				textAlign_s: "right"
+			}
+		}
+		Rectangle{
+			id:text_authorityBlockNumbers
+			height: T3Styling.fontSubSub_r
+			anchors{
+				bottom: parent.bottom
+				bottomMargin: T3Styling.margin_r
+				right:rect_seperator2.right
+				left:parent.horizontalCenter
+				leftMargin: T3Styling.spacing_r*2
+			}
+			color:"transparent"
+			T3Text{
+				width:parent.width
+				height:T3Styling.fontSubSub_r
+				textPixelSize_r: T3Styling.fontSubSub_r
+				textContent_s: "Authorized Blocks"
+				textColor_c: T3Styling.cFgSub_c
+				textAlign_s: "left"
+			}
+			T3Text{
+				id:text_authorityCount
+				width:parent.width
+				height:T3Styling.fontSubSub_r
+				textPixelSize_r: T3Styling.fontSubSub_r
+				textContent_s: "N/A"
+				textColor_c:{
+					if(textContent_s=="0 BLOCKS") T3Styling.cRed_c
+					else return T3Styling.cFgMain_c
+				}
+				textAlign_s: "right"
+			}
+		}
+
+
+
+	}
+	T3NMSpeedLimitAndSignal{
+		id:cust_speedLimitAndSignal
+		currSignal_s:""
+		//currSpeedLimit_i:
+		anchors{
+			//top:sDis_segDisplay.bottom
+			top:parent.top
+			topMargin: T3Styling.margin_r
+			left: rect_leftScreen.right
+			leftMargin: T3Styling.spacing_r
+			right:rect_rightScreen.left
+			rightMargin:T3Styling.spacing_r
+			bottom: grid_buttons.top
+			bottomMargin: T3Styling.spacing_r
+		}
+	}
 	Rectangle{
 		id:sDis_segDisplay
 		anchors{
-			left:cust_trainSelector.right
+			left:rect_rightScreen.left
+			right:rect_rightScreen.right
 			//			right:root.right
 			top:root.top
-			margins: T3Styling.margin_r
+			topMargin: T3Styling.margin_r
+//			margins: T3Styling.margin_r
 		}
-		height: 50
-		width: root.width*0.35
+		height: (cust_speedLimitAndSignal.height-T3Styling.spacing_r*9)/10*2+T3Styling.spacing_r
 		color: T3Styling.cBgMain_c
 		radius: T3Styling.spacing_r
 		border.color: T3Styling.cFgSubSub_c
@@ -110,7 +561,7 @@ Item {
 			textPixelSize_r: T3Styling.fontSubSub_r
 			SequentialAnimation{
 				id:sAnim_animationStation
-				running:text_stationInfo.textContent_s!==""
+				running:text_stationInfo.textContent_s!=="stat"
 				loops: Animation.Infinite
 				alwaysRunToEnd: false
 				PropertyAnimation{
@@ -162,238 +613,13 @@ Item {
 		}
 
 	}
-
-	Rectangle{
-		id:rect_leftScreen
-		anchors{
-			left:cust_trainSelector.right
-			top:sDis_segDisplay.bottom
-			bottom:grid_buttons.top
-			leftMargin: T3Styling.margin_r
-			rightMargin: T3Styling.margin_r
-			topMargin:T3Styling.spacing_r
-			bottomMargin:T3Styling.spacing_r
-		}
-		width: root.width*0.35
-		border.width: T3Styling.lineWidth_r
-		border.color: T3Styling.cFgSubSub_c
-		radius: T3Styling.spacing_r
-		color:T3Styling.cBgMain_c
-		Column{
-			id:colu_leftdoorInfo
-			spacing:T3Styling.spacing_r*1.5
-			anchors{
-				left:cVie_carView.left
-				right: parent.horizontalCenter
-				rightMargin: T3Styling.spacing_r*2
-				//top:rect_seperator1.bottom
-				//topMargin: T3Styling.spacing_r*2
-				top: parent.top
-				topMargin: T3Styling.margin_r
-			}
-			Rectangle{
-				height: T3Styling.fontSubSub_r
-				width: parent.width
-				color:"transparent"
-				T3Text{
-					width:parent.width
-					height:T3Styling.fontSubSub_r
-					textPixelSize_r: T3Styling.fontSubSub_r
-					textContent_s:"Right Door"
-					textColor_c: T3Styling.cFgSub_c
-					textAlign_s: "left"
-				}
-				T3Text{
-					id: 	text_rightDoorStatus
-					width:parent.width
-					height:T3Styling.fontSubSub_r
-					textPixelSize_r: T3Styling.fontSubSub_r
-					textContent_s: "N/A"
-					textColor_c:{
-						if(textContent_s==="OPEN") return T3Styling.cYellow_c
-						else return  T3Styling.cGreen_c
-					}
-					textAlign_s: "right"
-				}
-			}
-
-		}
-		Column{
-			id:colu_rightdoorInfo
-			spacing:T3Styling.spacing_r*1.5
-			anchors{
-				right:cVie_carView.right
-				left: parent.horizontalCenter
-				leftMargin: T3Styling.spacing_r*2
-				//top:rect_seperator1.bottom
-				//topMargin: T3Styling.spacing_r*2
-				top: parent.top
-				topMargin: T3Styling.margin_r
-			}
-			Rectangle{
-				height: T3Styling.fontSubSub_r
-				width: parent.width
-				color:"transparent"
-				T3Text{
-					width:parent.width
-					height:T3Styling.fontSubSub_r
-					textPixelSize_r: T3Styling.fontSubSub_r
-					textContent_s: "Left Door"
-					textColor_c: T3Styling.cFgSub_c
-					textAlign_s: "left"
-				}
-				T3Text{
-					id:text_leftDoorStatus
-					width:parent.width
-					height:T3Styling.fontSubSub_r
-					textPixelSize_r: T3Styling.fontSubSub_r
-					textContent_s: "N/A"
-					textColor_c:{
-						if(textContent_s==="OPEN") return T3Styling.cYellow_c
-						else return  T3Styling.cGreen_c
-					}
-					textAlign_s: "right"
-				}
-			}
-
-		}
-		T3NMCarView{
-			id:cVie_carView
-			anchors{
-				top:colu_leftdoorInfo.bottom
-				topMargin: T3Styling.spacing_r*1.5
-				left:rect_leftScreen.left
-				right:rect_leftScreen.right
-				leftMargin: T3Styling.margin_r
-				rightMargin: T3Styling.margin_r
-				bottom: colu_serviceBrakeInfo.top
-				bottomMargin:  T3Styling.spacing_r*1.5
-			}
-			leftDoorClosed_b: text_rightDoorStatus.textContent_s === "CLOSED"
-			rightDoorClosed_b: text_leftDoorStatus.textContent_s === "CLOSED"
-			brakeReleased_b: text_serviceBrakeStatus.textContent_s === "RELEASED"
-			brakeEmergency_b: text_emergencyBrakeStatus.textContent_s==="APPLIED"
-			//height: rect_leftScreen.height*0.35
-		}
-		Column{
-			id:colu_serviceBrakeInfo
-			spacing:T3Styling.spacing_r*1.5
-			anchors{
-				left:cVie_carView.left
-				right: parent.horizontalCenter
-				rightMargin: T3Styling.spacing_r*2
-				//top: cVie_carView.bottom
-				//topMargin: T3Styling.spacing_r*1.5
-				bottom:  parent.bottom
-				bottomMargin: T3Styling.margin_r
-			}
-			Rectangle{
-				height: T3Styling.fontSubSub_r
-				width: parent.width
-				color:"transparent"
-				T3Text{
-					width:parent.width
-					height:T3Styling.fontSubSub_r
-					textPixelSize_r: T3Styling.fontSubSub_r
-					textContent_s: "Service Brake"
-					textColor_c: T3Styling.cFgSub_c
-					textAlign_s: "left"
-				}
-				T3Text{
-					id:text_serviceBrakeStatus
-					width:parent.width
-					height:T3Styling.fontSubSub_r
-					textPixelSize_r: T3Styling.fontSubSub_r
-					textContent_s: "N/A"
-					textColor_c:{
-						if(textContent_s==="APPLIED") T3Styling.cYellow_c
-						else return T3Styling.cGreen_c
-					}
-					textAlign_s: "right"
-				}
-			}
-
-		}
-		Column{
-			id:colu_emergencyBrakeInfo
-			spacing:T3Styling.spacing_r*1.5
-			anchors{
-				right:cVie_carView.right
-				left: parent.horizontalCenter
-				leftMargin: T3Styling.spacing_r*2
-				//top:rect_seperator1.bottom
-				//topMargin: T3Styling.spacing_r*2
-				//top: cVie_carView.bottom
-				//topMargin: T3Styling.spacing_r*1.5
-				bottom:  parent.bottom
-				bottomMargin: T3Styling.margin_r
-			}
-
-			Rectangle{
-				height: T3Styling.fontSubSub_r
-				width: parent.width
-				color:"transparent"
-				T3Text{
-					width:parent.width
-					height:T3Styling.fontSubSub_r
-					textPixelSize_r: T3Styling.fontSubSub_r
-					textContent_s: "Emergency Brake"
-					textColor_c: T3Styling.cFgSub_c
-					textAlign_s: "left"
-				}
-				T3Text{
-					id:text_emergencyBrakeStatus
-					width:parent.width
-					height:T3Styling.fontSubSub_r
-					textPixelSize_r: T3Styling.fontSubSub_r
-					textContent_s: "N/A"
-					textColor_c:{
-						if(textContent_s=="APPLIED") T3Styling.cRed_c
-						else return T3Styling.cGreen_c
-					}
-					textAlign_s: "right"
-				}
-			}
-
-		}
-		Rectangle{
-			id:rect_seperator2
-			anchors{
-				left:cVie_carView.left
-				right: cVie_carView.right
-				top:colu_emergencyBrakeInfo.bottom
-				topMargin: T3Styling.spacing_r*1.5
-			}
-			visible: false
-			height: T3Styling.lineWidth_r
-			radius: height
-			color: T3Styling.cFgSubSub_c
-		}
-
-	}
-	T3NMSpeedLimitAndSignal{
-		id:cust_speedLimitAndSignal
-		currSignal_s:""
-		//currSpeedLimit_i:
-		anchors{
-			//top:sDis_segDisplay.bottom
-			top:parent.top
-			topMargin: T3Styling.margin_r
-			left: rect_leftScreen.right
-			leftMargin: T3Styling.spacing_r
-			right:rect_rightScreen.left
-			rightMargin:T3Styling.spacing_r
-			bottom: grid_buttons.top
-			bottomMargin: T3Styling.spacing_r
-		}
-	}
 	Rectangle{
 
 		id:rect_rightScreen
 		anchors{
 			right:root.right
-			top:parent.top
-			topMargin: T3Styling.margin_r
+			top:sDis_segDisplay.bottom
+			topMargin: T3Styling.spacing_r
 			bottom:grid_buttons.top
 			//l//eftMargin: T3Styling.margin_r
 			rightMargin: T3Styling.margin_r
@@ -426,7 +652,7 @@ Item {
 				maxValue_n:150
 				textOnly_b: false
 				toggle_b: false
-				width:(parent.width- T3Styling.spacing_r*2)/3
+				width:(parent.width- T3Styling.spacing_r*2)/10*2.5
 				height: width
 			}
 			T3Text{
@@ -498,7 +724,7 @@ Item {
 				minValue_n: -2
 				maxValue_n: 2
 				toggle_b: false
-				width:(parent.width- T3Styling.spacing_r*2)/3
+				width:(parent.width- T3Styling.spacing_r*2)/10*2.5
 				height: width
 			}
 			T3Text{
@@ -543,7 +769,7 @@ Item {
 						,"Train Height"
 						,"Train Width"
 						,"Train Mass"
-						,"Cabin Temperature"
+						,"Train Heater"
 					]
 					delegate:Rectangle{
 						height: T3Styling.fontSubSub_r
@@ -583,7 +809,7 @@ Item {
 					id:reap_trainConstantsDisplay2
 					model:["Exterior Light"
 						,"Interior Light"
-						,"Engine Status"
+						,"Train Engine"
 						,"Signal Pickup"
 						,"Brake Status"
 					]
@@ -625,6 +851,36 @@ Item {
 
 		}
 	}
+	T3ParamUnit{
+		id:cust_trainTemperature
+		anchors{
+			bottom: grid_buttons.top
+			left:grid_buttons.left
+			right:rect_leftScreen.right
+			rightMargin: T3Styling.margin_r+T3Styling.spacing_r*2
+			bottomMargin: T3Styling.spacing_r
+		}
+		height: T3Styling.margin_r*2
+		maxValue_r: 100
+		isWhole_b: true
+		paramConfig_A: "F_F_Internal Train Temperature_F";
+	}
+	T3Button{
+		id:butt_applyTrainTemperature
+		anchors{
+			top:cust_trainTemperature.top
+			bottom: cust_trainTemperature.bottom
+			left:cust_trainTemperature.right
+			right:rect_leftScreen.right
+		}
+		buttonLabel_s: "√"
+		onButtonClicked: {
+			if(trainId_s==="") return;
+			t3databaseQml.nm_setTrainTemperature(trainId_s,
+												 cust_trainTemperature.actualValue_r);
+		}
+
+	}
 	Grid{
 		id:grid_buttons
 		anchors{
@@ -645,7 +901,7 @@ Item {
 			property bool currState_b: false
 			width: parent.unitWidth_r
 			height:parent.height
-			buttonLabel_s: (currState_b?"Revoke":"Invoke")+" Broken Rail Failure"
+			buttonLabel_s: (currState_b?"Revoke":"Invoke")+" Train Engine Failure"
 			releasedColor_c: currState_b?Qt.darker(T3Styling.cRed_c):T3Styling.cFgSubSub_c
 			onButtonClicked: {
 				currState_b = !currState_b;
@@ -659,7 +915,7 @@ Item {
 			property bool currState_b: false
 			width: parent.unitWidth_r
 			height:parent.height
-			buttonLabel_s: (currState_b?"Revoke":"Invoke")+" Track Circuit Failure"
+			buttonLabel_s: (currState_b?"Revoke":"Invoke")+" Signal Pickup Failure"
 			releasedColor_c: currState_b?Qt.darker(T3Styling.cRed_c):T3Styling.cFgSubSub_c
 			onButtonClicked: {
 				currState_b = !currState_b;
@@ -673,7 +929,7 @@ Item {
 			property bool currState_b: false
 			width: parent.unitWidth_r
 			height:parent.height
-			buttonLabel_s: (currState_b?"Revoke":"Invoke")+" Power Failure"
+			buttonLabel_s: (currState_b?"Revoke":"Invoke")+" Brake Failure"
 			releasedColor_c: currState_b?Qt.darker(T3Styling.cRed_c):T3Styling.cFgSubSub_c
 			onButtonClicked: {
 				currState_b = !currState_b;
@@ -693,11 +949,12 @@ Item {
 				currState_b = !currState_b;
 				if(trainId_s==="") return;
 				t3databaseQml.nm_setFailureOrBrake(trainId_s,03,currState_b);
-				view2db(true);
+				db2view(true);
 			}
 		}
 
 	}
+
 	Rectangle{
 		id:rect_frontHelper
 		anchors{
@@ -711,6 +968,7 @@ Item {
 		color:T3Styling.cBgSub_c
 		property bool initState_b:true
 		opacity: 1
+//		visible: false
 		border.width: T3Styling.lineWidth_r
 		border.color: T3Styling.cFgSubSub_c
 		radius: T3Styling.lineWidth_r

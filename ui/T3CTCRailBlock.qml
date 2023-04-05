@@ -1,7 +1,7 @@
 import QtQuick 2.12
 
 Item {
-	property string kmPlcIo_s:"00000000001011010000000011000000"
+	property string kmPlcIo_s:"00010000001011010000000011000000"
 	property string bcnPlcOut_s:
 		"00000000000000000000000000000000"
 	property string blockId_s:"G_A_1"
@@ -24,7 +24,8 @@ Item {
 	readonly property bool maintananceMode_b:false
 	readonly property int leftSignalLight_i:parseInt(kmPlcIo_s.substring(16,18),2)
 	readonly property int rightSignalLight_i:parseInt(kmPlcIo_s.substring(20,22),2)
-
+	property real trainPercent_r:0.7
+	property bool trainPercentKnown_b:false
 	 property color color_c: {//probably needs change
 		if(hovered2_b)
 			return T3Styling.cFgMain_c
@@ -199,7 +200,7 @@ Item {
 			border.width:root.adaptiveLineWidth_r
 			border.color:T3Styling.cFgMain_c
 			Behavior on color {PropertyAnimation { easing.type: Easing.InOutQuad }}
-			property real trainAtPerc_r: 0.7
+			property real trainAtPerc_r: 0.5
 			readonly property real animationDuration_r : 3000.0
 			readonly property variant animPosiIntervProp_rA :{
 				if(trainMovingForward_b)
@@ -261,14 +262,15 @@ Item {
 				}
 
 			}
-			x:(rect_canvas.width-rect_canvas.h_r)*trainAtPerc_r
+			property real finalTrainPercent_r:trainPercentKnown_b?root.trainPercent_r:0.5
+			x:(rect_canvas.width-rect_canvas.h_r)*finalTrainPercent_r
 			y:{
 				//				let trainAtPerc_r = parseFloat(root.trainInfo_s.split("_")[1])
-				if(trainAtPerc_r<0.5&&!root.switchIsUp_b&&root.hasSwitchOnLeft_b)
+				if(finalTrainPercent_r<0.5&&!root.switchIsUp_b&&root.hasSwitchOnLeft_b)
 					//H/B=h/b -> h=H/B*b
-					return (rect_canvas.ybottom_r-rect_canvas.ytop_r)*(0.5-trainAtPerc_r)*2
-				else if(trainAtPerc_r>0.5&&!root.switchIsUp_b&&root.hasSwitchOnRight_b)
-					return (rect_canvas.ybottom_r-rect_canvas.ytop_r)*(-0.5+trainAtPerc_r)*2
+					return (rect_canvas.ybottom_r-rect_canvas.ytop_r)*(0.5-finalTrainPercent_r)*2
+				else if(finalTrainPercent_r>0.5&&!root.switchIsUp_b&&root.hasSwitchOnRight_b)
+					return (rect_canvas.ybottom_r-rect_canvas.ytop_r)*(-0.5+finalTrainPercent_r)*2
 				else
 					return 0;
 			}

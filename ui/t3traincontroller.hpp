@@ -13,6 +13,7 @@ class T3TrainController {
 	static QJsonArray getMetaInfo(const QString trainId, MODU_ARGS_REF argsref);//does not include pid
 	static void updateControlSystemsOnAllTrains(QTime currentTime, MODU_ARGS_REF argsref);
 	static void updatePiOnAllTrains(MODU_ARGS_REF argsref);
+	static QString hardwareCmdEval(QString command, MODU_ARGS_REF argsref);
 };
 
 /**
@@ -103,16 +104,16 @@ inline QJsonArray T3TrainController::getMetaInfo(const QString trainId, MODU_ARG
 		metaInfo.push_back(static_cast<bool>(BCNPLCOUT[0] == '1'));//15 authority
 		metaInfo.push_back((BCNPLCOUT.midRef(2, 8).toUInt(nullptr, 2)));//16 authority block number
 		if(BCNPLCOUT[26] == '1' && BCNPLCOUT[27] == '1') {
-			metaInfo.push_back(QString("PLATFORM | TRAIN |          "));
+			metaInfo.push_back(QString("PLATFORM | TRAIN | --------"));
 		} else if(BCNPLCOUT[26] == '1') {
 			metaInfo.push_back(QString("PLATFORM | TRAIN | PLATFORM"));
 		} else if(BCNPLCOUT[27] == '1') {
-			metaInfo.push_back(QString("          | TRAIN | PLATFORM"));
+			metaInfo.push_back(QString("-------- | TRAIN | PLATFORM"));
 		} else {
 			metaInfo.push_back(QString(""));
 		}//17 stationinfo string
 	}
-	metaInfo.push_back(qAbs(qRound(GET_TRAIN_F(trainId, "NC_U", argsref).toFloat() / 1000))); //18 currPower
+	metaInfo.push_back(qAbs(qRound(GET_TRAIN_F(trainId, "NC_U", argsref).toFloat()))); //18 currPower
 
 	return QJsonArray::fromVariantList(metaInfo);
 }
@@ -138,24 +139,48 @@ inline void T3TrainController::updateControlSystemsOnAllTrains(QTime currentTime
 			SET_TRAIN_F(trainId, "COM[NC_NM]_EXTLIGHT", false, argsref);
 			SET_TRAIN_F(trainId, "COM[NC_NM]_INTLIGHT", false, argsref);
 		}
-		//station door control[time left]
-		if(BCNPLCOUT.at(26) == '1' || BCNPLCOUT.at(27) == '1') {
-			int secondsLeft = currTrain.value("COM[NC_NM]_SECLEFT").toInt();
-			if(secondsLeft >= 20 && currTrain.value("NC_PREVY").toDouble() < 2.0) {
+		//station  control[time left]
+		int secondsLeft = currTrain.value("COM[NC_NM]_SECLEFT").toInt();
+		if((BCNPLCOUT.at(26) == '1' || BCNPLCOUT.at(27) == '1')) {
+			if(GET_TRAIN_F(trainId, "NC_PREVY", argsref).toInt() > 5) {
+				SET_TRAIN_F(trainId, "COM[NC_NM]_SBRAKE", true, argsref);
+			} else if(secondsLeft == -1) {
+				secondsLeft = 20;
+				SET_TRAIN_F(trainId, "COM[NC_NM]_SBRAKE", true, argsref);
+			} else if(secondsLeft >= 5 && currTrain.value("NC_PREVY").toDouble() < 2.0) {
 				if(BCNPLCOUT.at(26) == '1') SET_TRAIN_F(trainId, "COM[NC_NM]_LDOOR", true, argsref);
 				else SET_TRAIN_F(trainId, "COM[NC_NM]_LDOOR", false, argsref);
 				if(BCNPLCOUT.at(27) == '1') SET_TRAIN_F(trainId, "COM[NC_NM]_RDOOR", true, argsref);
 				else SET_TRAIN_F(trainId, "COM[NC_NM]_RDOOR", false, argsref);
 				SET_TRAIN_F(trainId, "COM[NC_NM]_SBRAKE", true, argsref);
-			} else if(secondsLeft <= 5 && secondsLeft != -1) {
+				secondsLeft -= 1;
+			} else if(secondsLeft < 5 && secondsLeft != -1) {
 				SET_TRAIN_F(trainId, "COM[NC_NM]_RDOOR", false, argsref);
 				SET_TRAIN_F(trainId, "COM[NC_NM]_LDOOR", false, argsref);
 				SET_TRAIN_F(trainId, "COM[NC_NM]_SBRAKE", false, argsref);
+				secondsLeft = -2;
 			}
-			secondsLeft -= 1;
+			SET_TRAIN_F(trainId, "COM[NC_NM]_SECLEFT", secondsLeft, argsref);
+		} else if(secondsLeft == -2) {
+			secondsLeft = -1;
 			SET_TRAIN_F(trainId, "COM[NC_NM]_SECLEFT", secondsLeft, argsref);
 		}
-
+		//heater control
+		float currCabinTemperature = currTrain.value("NM_TEMPERATURE").toDouble();
+		bool heaterIsOn = currTrain.value("NM_HEATER").toBool();
+		if(currCabinTemperature < 65.0f && !heaterIsOn) {
+			heaterIsOn = true;
+			currCabinTemperature += 0.01;
+			SET_TRAIN_F(trainId, "NM_TEMPERATURE", currCabinTemperature, argsref);
+			SET_TRAIN_F(trainId, "NM_HEATER", heaterIsOn, argsref);
+		} else if(currCabinTemperature > 70.0f && heaterIsOn) {
+			heaterIsOn = false;
+			SET_TRAIN_F(trainId, "NM_HEATER", heaterIsOn, argsref);
+		}
+		//commanded speed pickups
+		float commandedSpeed = BCNPLCOUT.midRef(10, 8).toUInt(nullptr, 2);
+		qDebug() << "Picked up speed = " << commandedSpeed;
+		SET_TRAIN_F(trainId, "NC_R", commandedSpeed, argsref);
 	}
 }
 
@@ -172,44 +197,47 @@ inline void T3TrainController::updatePiOnAllTrains(MODU_ARGS_REF argsref) {
 		float dt = currTrain.value(("NC_DT")).toDouble();
 		float kp = currTrain.value(("NC_KP")).toDouble();
 		float ki = currTrain.value(("NC_KI")).toDouble();
-		if((BCNPLCOUT.at(26) == '1' || BCNPLCOUT.at(2) == '1') ) {//if at station
-			int secondsLeft = currTrain.value("COM[NC_NM]_SECLEFT").toInt();
-			if(secondsLeft == -1) {
-				SET_TRAIN_F(trainId, "COM[NC_NM]_SECLEFT", 30, argsref);//30 seconds of stop time
-				if(r != 0)
-					SET_TRAIN_F(trainId, "NC_R", 0.0f, argsref);//force train to stop
-			}
-		}
-
-
+//		if((BCNPLCOUT.at(26) == '1' || BCNPLCOUT.at(2) == '1') ) {//if at station
+//			int secondsLeft = currTrain.value("COM[NC_NM]_SECLEFT").toInt();
+//			if(secondsLeft == -1) {
+//				SET_TRAIN_F(trainId, "COM[NC_NM]_SECLEFT", 30, argsref);//30 seconds of stop time
+//				if(r != 0)
+//					SET_TRAIN_F(trainId, "NC_R", 0.0f, argsref);//force train to stop
+//			}
+//		}
 		//	//calculate new values
 		float e = r - prev_y;
-		float P = kp  * e;
-		float I = ki  * sum_e * dt * 1e-15;
-		//float D = ki * (prev_e + e) * dt * 0.5;//trapozoidal integration
-		//if(P < 100) P = 0;
-		//if(I < 5) I = 0;
-		float u = (P + I) / 100;
+		float P = kp  * e * 20 ;
+		float I = ki  * sum_e * 20 ;
+		float u = (P + I);
+		if(u > 120) u = 120;
+		if(u < -120) u = -120;
 		if(currTrain.value("COM[NC_NM]_EBRAKE").toBool() && prev_y > 0) {
-			u = -0.12;
+			sum_e = e = u = 0;
 		} else if(currTrain.value("COM[NC_NM]_SBRAKE").toBool() && prev_y > 0) {
-			u = -0.273;
-		}
-		float y = prev_y + u;
-		if(qAbs(e) > 10)sum_e += e;
+			sum_e = e = u = 0;
+		} else sum_e += e * dt;
+		//float y = prev_y + u;
 
-		if(currTrain.value("COM[NC_NM]_EBRAKE").toBool() || currTrain.value("COM[NC_NM]_SBRAKE").toBool()) {
-			if(qAbs(prev_y) < 3) {
-				sum_e = 0;
-				e = 0;
-			}
-		}
+
+//		if(currTrain.value("COM[NC_NM]_EBRAKE").toBool() || currTrain.value("COM[NC_NM]_SBRAKE").toBool()) {
+//			if(qAbs(prev_y) < 3) {
+//				sum_e = 0;
+//				e = 0;
+//			}
+//		}
+		qDebug() << QString("E = %1 , VELOCITY = %2 -> (P = %3 , I = %4 ) -> POWER = %5")
+				 .arg(e).arg(prev_y).arg(P).arg(I).arg(u);
 		SET_TRAIN_F(trainId, "NC_SUME", (sum_e), argsref);
 		SET_TRAIN_F(trainId, "NC_PREVE", (e), argsref);
-		SET_TRAIN_F(trainId, "NC_U", (581372 * u), argsref);
-		SET_TRAIN_F(trainId, "NC_PREVY", y, argsref);
-		SET_TRAIN_F(trainId, "NM_ACCELERATION", qMax(0.0f, y - prev_y), argsref);
+		SET_TRAIN_F(trainId, "NC_U", u, argsref);
+		//SET_TRAIN_F(trainId, "NC_PREVY", y, argsref);
+		//SET_TRAIN_F(trainId, "NM_ACCELERATION", qMax(0.0f, y - prev_y), argsref);
 	}
+}
+
+inline QString T3TrainController::hardwareCmdEval(QString command, MODU_ARGS_REF argsref) {
+
 }
 
 

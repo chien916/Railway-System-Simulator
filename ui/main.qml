@@ -40,7 +40,7 @@ Window {
 		if(ind===0) Qt.createComponent("T3WindowWrapper.qml").createObject(null,{loaderSource_s:"T3CTC.qml",height_i:700,width_i:1024}).show()
 		if(ind===1) Qt.createComponent("T3WindowWrapper.qml").createObject(null,{loaderSource_s:"T3KC.qml",height_i:500,width_i:1200}).show()
 		if(ind===2) Qt.createComponent("T3WindowWrapper.qml").createObject(null,{loaderSource_s:"T3KM.qml",height_i:600,width_i:1000}).show()
-		if(ind===3) Qt.createComponent("T3WindowWrapper.qml").createObject(null,{loaderSource_s:"T3NM.qml",height_i:350,width_i:1250}).show()
+		if(ind===3) Qt.createComponent("T3WindowWrapper.qml").createObject(null,{loaderSource_s:"T3NM.qml",height_i:600,width_i:1200}).show()
 		if(ind===4) Qt.createComponent("T3WindowWrapper.qml").createObject(null,{loaderSource_s:"T3NC.qml",height_i:350,width_i:1000}).show()
 	}
 	Rectangle{

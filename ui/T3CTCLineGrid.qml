@@ -170,6 +170,14 @@ Item {
 							blockId_s:coordinates_A/*[lineObjIndex_i]*/[index][0]
 							bcnPlcOut_s: trackVariablesObject_O[blockId_s]["COM[KC|KM]_BCNPLCOUT"]
 							kmPlcIo_s:trackVariablesObject_O[blockId_s]["COM[KC|KM]_KMPLCIO"]
+							trainPercentKnown_b: true
+							trainPercent_r: {
+								let t_s = trackVariablesObject_O[blockId_s]["KM_TRAINONBLOCK"];
+								let t_splitted =t_s.split("_");
+								if(t_splitted.length===3){
+									parseFloat(t_splitted[2])
+								} else 0.5
+							}
 							hovered_b: mAre_railBlock.containsMouse
 							hovered2_b: (currIndOfPathsAvailable_n===-1||!pathsAvailable_sA)?false:pathsAvailable_sA[currIndOfPathsAvailable_n]===blockId_s
 							noAnimation_b: hovered2_b

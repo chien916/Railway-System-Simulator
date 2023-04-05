@@ -9,7 +9,7 @@ Item {
 	onEngineerMode_bChanged: db2view(true);
 	property bool autoMode_b:true
 	onAutoMode_bChanged: db2view(true);
-	property bool stationMode_b:false
+	property bool stationMode_b:text_stationInfo.textContent_s!==""
 	property string trainId_s:cust_trainSelector.currValue_s
 	onTrainId_sChanged:{
 		rect_frontHelper.runAnimation();
@@ -54,7 +54,7 @@ Item {
 			reap_paramsToggle.itemAt(1).valueratio_r= metaInfo_A[2]?1:0;
 			reap_paramsToggle.itemAt(2).valueratio_r= metaInfo_A[3]?1:0;
 			reap_paramsToggle.itemAt(3).valueratio_r= metaInfo_A[4]?1:0;
-			cust_speedSetpoint.valueratio_r = metaInfo_A[6]/100;
+			cust_speedSetpoint.valueratio_r = metaInfo_A[6]/cust_speedSetpoint.maxValue_r;
 		}
 		//station info
 		text_stationInfo.textContent_s = metaInfo_A[17];
@@ -475,7 +475,7 @@ Item {
 			anchors.left: grid_buttons.left
 			anchors.right: grid_buttons.right
 			height:grid_buttons.unitHeight_r
-			maxValue_r: 100
+			maxValue_r: 50
 			paramConfig_A: "F_F_Speed Setpoint_Mph"
 			opacity: readOnly_b?0.5:1
 			Behavior on opacity{PropertyAnimation{easing.type: Easing.OutCirc}}

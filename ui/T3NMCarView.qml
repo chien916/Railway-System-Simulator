@@ -11,7 +11,9 @@ Item {
 			fill: parent
 		}
 //		radius: T3Styling.margin_r
-		color:T3Styling.cBgMain_c
+		color: "transparent"
+		//color:T3Styling.cBgMain_c
+		radius: T3Styling.spacing_r
 //		Text{
 //			anchors{
 //				top:rect_top.bottom

@@ -85,7 +85,7 @@ inline void T3TrackController::processPlc(const QString blockId, QJSEngine *plcR
 }
 
 inline void T3TrackController::processAllPlc(QJSEngine *plcRuntime, QJSValue *plcFunction, MODU_ARGS_REF argsref) {
-	qDebug() << "I;m running";
+
 	for(qsizetype i = 0; i < std::get<3>(*argsref)->size(); ++i) {//for each line
 		QStringList allBlockIds = std::get<3>(*argsref)->at(i).toObject().keys();
 		for(const QString& blockId : qAsConst(allBlockIds)) {//for each block on current line
@@ -144,6 +144,23 @@ inline QJsonArray T3TrackController::readPlcToMetaInfo(const QString blockId, MO
 		BCNPLCOUT.at(1) == '1',//9-auth up down
 		static_cast<float>(BCNPLCOUT.midRef(2, 8).toUInt(nullptr, 2))//10-auth block number
 	};
+	{
+		//left signal
+		QStringRef leftSignal = KMPLCIO.midRef(16, 2);
+		if(leftSignal == "01") metaInfo2[4] = QString("yellow");
+		else if(leftSignal == "10") metaInfo2[4] = QString("green");
+		else metaInfo2[4] = QString("red");
+
+		//right signal
+		QStringRef rightSignal = KMPLCIO.midRef(20, 2);
+		if(rightSignal == "01") metaInfo2[7] = QString("yellow");
+		else if(rightSignal == "10") metaInfo2[7] = QString("green");
+		else metaInfo2[7] = QString("red");
+
+		//switch position
+		if(KMPLCIO[18] == '1') metaInfo2[5] = QString("top");
+		else metaInfo2[5] = QString("bottom");;
+	}
 	{
 		//left signal
 		QStringRef leftSignal = KMPLCIO.midRef(16, 2);

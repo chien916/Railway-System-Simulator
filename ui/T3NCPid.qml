@@ -150,7 +150,7 @@ Item {
 				}
 
 				Loader{
-					id:load_iInPid
+					id:load_pInPid
 					anchors{
 						top:parent.top
 						bottom: parent.bottom
@@ -292,7 +292,7 @@ Item {
 				}
 
 				Loader{
-					id:load_dInPid
+					id:load_iInPid
 					anchors{
 						top:parent.top
 						bottom: parent.bottom
@@ -415,11 +415,12 @@ Item {
 		repeat: true
 		onTriggered: {
 			load_rInPid.item.value_s = r_r;
-			load_eInPid.item.value_s = e_r;
-			load_iInPid.item.value_s = p_r;
-			load_dInPid.item.value_s = i_r;
-			load_uInPid.item.value_s = u_r;
 			load_yInPid.item.value_s = y_r;
+			load_eInPid.item.value_s = e_r;
+			load_iInPid.item.value_s = i_r;
+			load_pInPid.item.value_s = p_r;
+			load_uInPid.item.value_s = u_r;
+
 		}
 	}
 }

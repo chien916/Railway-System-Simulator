@@ -56,13 +56,12 @@ Item {
 			}
 			T3ParamUnit{
 				id:cust_suggestedSpeed
-				opacity:custom_maintainanceMode.valueratio_r>0.5?1:0.5
-				Behavior on opacity{PropertyAnimation{easing.type: Easing.OutCirc}}
+				opacity:1
 				height:T3Styling.fontMain_r*1
 				maxValue_r: 100;
 				minValue_r: 0
 				fixedPoint_i: 2
-				readOnly_b: !custom_maintainanceMode.valueratio_r>0.5
+				readOnly_b: false
 				paramConfig_A:"F_F_Suggested Speed_mph"
 				width: col_column.width
 			}
@@ -148,9 +147,9 @@ Item {
 				height: T3Styling.fontSubSub_r*2
 				width: parent.width
 				radius: T3Styling.margin_r
-				opacity:custom_maintainanceMode.valueratio_r>0.5?1:0.5
+				opacity:1
 				Behavior on opacity{PropertyAnimation{easing.type: Easing.OutCirc}}
-				color: (custom_maintainanceMode.valueratio_r>0.5)?T3Styling.cBgMain_c:T3Styling.cFgSubSub_c
+				color:T3Styling.cBgMain_c
 				Behavior on color{PropertyAnimation{}}
 				T3Text{
 					id:text_dispatchFromHint
@@ -164,7 +163,7 @@ Item {
 				}
 				TextInput{
 					id:tInp_dispatchFrom
-					readOnly:!custom_maintainanceMode.valueratio_r>0.5
+					readOnly:false
 					anchors{
 						fill:parent
 					}

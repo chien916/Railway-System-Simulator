@@ -3,14 +3,14 @@
 #include <QtCore>
 #include <QtGui>
 #include <QtQml>
-#include <QtWidgets>
+
 #include "t3database.hpp"
 #include "t3unittest.hpp"
 int main(int argc, char *argv[]) {
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 	QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 #endif
-	QApplication app(argc, argv);
+	QGuiApplication app(argc, argv);
 
 
 

@@ -1,4 +1,4 @@
-QT += quick gui charts multimedia
+QT += quick gui multimedia serialport
 
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
@@ -24,6 +24,8 @@ HEADERS += \
 	t3ctcoffice.hpp \
 	t3database.hpp \
 	t3prophelper.h \
+	t3serialserver.hpp \
+	t3serialsimulator.hpp \
 	t3trackcontroller.hpp \
 	t3trackmodel.hpp \
 	t3traincontroller.hpp \

@@ -323,13 +323,14 @@ inline QVarLengthArray<QString, 4> T3TrackModel::getNeighboringBlocks(const QStr
 }
 
 inline void T3TrackModel::updateTrainPositionOnAllBlocks(MODU_ARGS_REF argsref) {
-	for(const QJsonValue& currTrainRaw : qAsConst(*std::get<4>(*argsref))) {
+	qDebug() << "I;m running";
+	for(const QJsonValue currTrainRaw : (*std::get<4>(*argsref))) {
 		QJsonObject currTrain = currTrainRaw.toObject();
 		//Oh dear here comes the physics
 		QString trainId = currTrain.value("NM_ID").toString();
 		QString blockId = currTrain.value("NM_BLOCKID").toString();
 		float length = GET_TRACKCON_F(blockId, "length", argsref).toDouble();
-		float velocity = currTrain.value("NC_PREVY").toDouble();
+		float velocity = KMH2MS_F(currTrain.value("NC_PREVY").toDouble());
 		const float dt = 1.0f;
 		//traverse through block
 		float ds = velocity  * dt;
@@ -338,6 +339,17 @@ inline void T3TrackModel::updateTrainPositionOnAllBlocks(MODU_ARGS_REF argsref) 
 		bool isMovingForward = trainOnBlockSplit.at(1).contains("F");
 		float percentTravelled = trainOnBlockSplit.at(2).toFloat();
 		percentTravelled += ds / length;
+		qDebug() << QString("TRAIN %1 SEC AT LENG %2 TRACK TRAVELLED WITH %3 M/S(km/h) SPEED %4 DIR %5 M -> %6 , %7")
+				 .arg(dt)
+				 .arg(length)
+				 .arg(velocity)
+				 .arg(isMovingForward ? "RIGHT" : "LEFT ")
+				 .arg(ds)
+				 .arg(trainId)
+				 .arg(blockId);
+		qDebug() << QString("PREV PERC %1 , NEW PERC %2")
+				 .arg(trainOnBlockSplit.at(2).toFloat())
+				 .arg(percentTravelled);
 		while(percentTravelled > 1.0f) {
 			bool viewReverse = false;
 			QString blockId_new = getPrevOrNextBlock(blockId, !isMovingForward, &viewReverse, argsref);
@@ -351,6 +363,17 @@ inline void T3TrackModel::updateTrainPositionOnAllBlocks(MODU_ARGS_REF argsref) 
 			SET_TRAIN_F(trainId, "NM_BLOCKID", blockId, argsref);
 			percentTravelled = percentTravelled_new;
 			length = length_new;
+			qDebug() << QString("[TVS] TRAIN %1 SEC AT LENG %2 TRACK TRAVELLED WITH %3 M/S(km/h) SPEED %4 DIR %5 M -> %6 ， %7")
+					 .arg(dt)
+					 .arg(length_new)
+					 .arg(velocity)
+					 .arg(viewReverse ? "DIFF" : "SAME")
+					 .arg(ds)
+					 .arg(trainId)
+					 .arg(blockId);
+			qDebug() << QString("PREV PERC %1 , NEW PERC %2")
+					 .arg(trainOnBlockSplit.at(2).toFloat())
+					 .arg(percentTravelled_new);
 		}
 		trainOnBlockSplit.replace(2, QString::number(percentTravelled));
 		SET_TRACKVAR_F(blockId, "KM_TRAINONBLOCK", trainOnBlockSplit.join("_"), argsref);

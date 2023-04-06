@@ -8,7 +8,7 @@ Item {
 	//flags:Qt.Dialog
 	//color: "transparent"
 	width: 1024
-	height: 650
+	height: 400
 	//maximumHeight: height
 	//minimumHeight: height
 	//maximumWidth: width
@@ -114,14 +114,16 @@ Item {
 			}
 			//			anchors.margins: T3Styling.margin_r
 			Repeater{
-				model:2
+				model:1
 				delegate:T3CTCLineGrid{
 					//trackConstantsObject_O: trackConstantsObjects_OA[index]["blocksMap"]
 					//trackVariablesObject_O: trackVariablesObjects_OA[index]
 					dbIndex_i: index
+					positionKnown_b: false
+					rotate_b: false
 					//coordinates_A: coordinates_nA[index]
 					pathsAvailable_sA: cust_dispatchBlock.currSelectedPath_A
-					height:(root.height-T3Styling.margin_r-T3Styling.spacing_r*8)/2
+					height:(root.height-T3Styling.margin_r-T3Styling.spacing_r*8)
 					width: colu_column.width
 					onBlockClicked: {
 						//block identifier
@@ -160,7 +162,7 @@ Item {
 			x:configMode_b?root.width*1/3-width/2:-width*5
 			Behavior on x{ PropertyAnimation {easing.type: Easing.InOutCirc }}
 			y:colu_column.y+colu_column.height/2-height/2
-			height: 450
+			height: root.height*0.8
 			width: root.width*0.3
 			color:T3Styling.cBgSub_c
 			radius: T3Styling.margin_r

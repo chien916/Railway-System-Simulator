@@ -58,7 +58,7 @@ Item {
 				id:cust_suggestedSpeed
 				opacity:1
 				height:T3Styling.fontMain_r*1
-				maxValue_r: 100;
+				maxValue_r: 50;
 				minValue_r: 0
 				fixedPoint_i: 2
 				readOnly_b: false
@@ -103,7 +103,8 @@ Item {
 
 			T3NCDial{
 				id:cust_switchDial
-				height: T3Styling.fontSubSub_r*12
+				height: T3Styling.fontSubSub_r*8
+				width: height*1.6
 				anchors.horizontalCenter: parent.horizontalCenter
 				ticks_nA: [0,0.36]
 				enabled_b:custom_maintainanceMode.valueratio_r>0.5
@@ -290,7 +291,7 @@ Item {
 		let metaInfo_A = t3databaseQml.ctc_readPlcInputFromMetaInfo(blockId_s);
 		if(maintanceModeIncluded_b)
 			custom_maintainanceMode.valueratio_r = metaInfo_A[0]?1:0;
-		cust_suggestedSpeed.valueratio_r = metaInfo_A[1]/100;
+		cust_suggestedSpeed.valueratio_r = metaInfo_A[1]/cust_suggestedSpeed.maxValue_r;
 		cust_switchDial.dialDialValue_r = metaInfo_A[2]?0.36:0;
 		tInp_dispatchFrom.text = metaInfo_A[3];
 	}

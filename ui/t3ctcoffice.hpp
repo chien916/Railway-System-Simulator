@@ -24,12 +24,14 @@ class T3CTCOffice {
 	static QJsonArray readPlcInputToMetaInfo(const QString blockId,  MODU_ARGS_REF argsref);
 	static QJsonArray searchPathForAuthority(const QString originBlock, const QString destiBlock,  MODU_ARGS_REF argsref);
 	static void toggleConnection(bool newConnectionState, MODU_ARGS_REF argsref);
+	static void grantAuthorityFromDispatchRequest(const QList<QJsonObject>* requests, MODU_ARGS_REF argsref);
+	static QVarLengthArray<bool, 2> determineAuthorityDirection(const QString originBlockId, const QString nextBlockId,  MODU_ARGS_REF argsref);
   private:
-	static void setAuthorityFromPath(const QJsonArray* authorityPath, bool b,  MODU_ARGS_REF argsref);
+	static void setAuthorityFromPath(const QJsonArray* authorityPath, bool b, unsigned int suggestedSpeed, MODU_ARGS_REF argsref);
 	static QList<QList<QString>> searchPaths (const QString originBlockId, const QString destBlockId, QSet<QString> pathSet
 							  , const QString& startingBlock1, const QString& startingBlock2, const QString& endingBlock1, const QString& endingBlock2
 							  , QJsonObject* targetedBlockMap,  QString allowedDirection);
-	static QVarLengthArray<bool, 2> determineAuthorityDirection(const QString originBlockId, const QString nextBlockId,  MODU_ARGS_REF argsref);
+
 };
 
 
@@ -396,21 +398,25 @@ inline void T3CTCOffice::writeToPlcInputFromMetaInfo(const QString blockId, cons
 			QJsonArray allBlocksAuthorizedFromCurrBlock =
 				(*std::get<0>(*argsref))(authorityPath.at(0).toString(), "CTC_AUTHPATH", std::get<3>(*argsref)).toJsonArray();
 			if(!allBlocksAuthorizedFromCurrBlock.isEmpty() && allBlocksAuthorizedFromCurrBlock.first().toString() != "")
-				setAuthorityFromPath(&allBlocksAuthorizedFromCurrBlock, false, argsref);
+				setAuthorityFromPath(&allBlocksAuthorizedFromCurrBlock, false, 0, argsref);
 		}
-		setAuthorityFromPath(&authorityPath, true, argsref);
+		setAuthorityFromPath(&authorityPath, true, static_cast<uint8_t>(MPH2KMH_F(metaInfo.at(1).toDouble())), argsref);
+	} else {
+		//if empty
+		QJsonArray CTC_AUTHOPATH = GET_TRACKVAR_F(blockId, "CTC_AUTHPATH", argsref).toJsonArray();
+		setAuthorityFromPath(&CTC_AUTHOPATH, false, 0, argsref);
 	}
 	//set authority, commanded speed, etc ONLY for current block
 	QString CTCPLCIO = GET_TRACKVAR_F(blockId, "COM[CTC|KC]_CTCPLCIO", argsref).toString();
 	{
 		Q_ASSERT(CTCPLCIO.size() == 32);
-		CTCPLCIO[0] =  '1';//if sent always connected assumed
-		CTCPLCIO[1] = metaInfo.at(0).toBool() ? '1' : '0';
-		//authority is handled from previous step
-		QString truncatedSuggestedSpeed = QString::number(static_cast<uint8_t>(MPH2KMH_F(metaInfo.at(1).toDouble())), 2).rightJustified(8, '0');
-		for(uint i = 9; i >= 2; --i) {
-			CTCPLCIO[i] = truncatedSuggestedSpeed[i - 2];
-		}
+//		CTCPLCIO[0] =  '1';//if sent always connected assumed
+//		CTCPLCIO[1] = metaInfo.at(0).toBool() ? '1' : '0';
+//		//authority is handled from previous step
+//		QString truncatedSuggestedSpeed = QString::number(static_cast<uint8_t>(MPH2KMH_F(metaInfo.at(1).toDouble())), 2).rightJustified(8, '0');
+//		for(uint i = 9; i >= 2; --i) {
+//			CTCPLCIO[i] = truncatedSuggestedSpeed[i - 2];
+//		}
 		CTCPLCIO[21] =  metaInfo.at(2).toBool() ? '1' : '0';
 	}
 	SET_TRACKVAR_F(blockId, "COM[CTC|KC]_CTCPLCIO", CTCPLCIO, argsref);
@@ -426,7 +432,7 @@ inline QJsonArray T3CTCOffice::readPlcInputToMetaInfo(const QString blockId, MOD
 		truncatedSuggestedSpeed[i - 2] = CTCPLCIO[i];
 	}
 	std::get<0>(metaInfoValue) = CTCPLCIO[1] == '1';
-	std::get<1>(metaInfoValue) = MPH2KMH_F(truncatedSuggestedSpeed.toInt(nullptr, 2));
+	std::get<1>(metaInfoValue) = KMH2MPH_F(truncatedSuggestedSpeed.toInt(nullptr, 2));
 	std::get<2>(metaInfoValue) = CTCPLCIO[10] == '1';
 	std::get<3>(metaInfoValue) = AUTHPATH_splitted.last();
 	return QJsonArray{std::get<0>(metaInfoValue), std::get<1>(metaInfoValue), std::get<2>(metaInfoValue), std::get<3>(metaInfoValue)};
@@ -458,10 +464,53 @@ inline void T3CTCOffice::toggleConnection(bool newConnectionState, MODU_ARGS_REF
 	}
 }
 
+inline void T3CTCOffice::grantAuthorityFromDispatchRequest(const QList<QJsonObject>* requests, MODU_ARGS_REF argsref) {
+//	dispatchObject.insert(QString("trainId"), dispatchMetaInfo.at(0).toString());
+//	dispatchObject.insert(QString("origin"), dispatchMetaInfo.at(1).toString());
+//	dispatchObject.insert(QString("destination"), dispatchMetaInfo.at(2).toString());
+//	dispatchObject.insert(QString("time"), dispatchTime.toString("HH:mm"));
+//	dispatchObject.insert(QString("path"), path);
+	for(const QJsonObject& currRequest : *requests) {
+		QJsonArray path = currRequest.value("path").toArray();
+		for(qsizetype i = 0; i < path.size(); ++i) {
+			//for each block included in this authority path, find all blocks authorized on this current block, and clear their authority
+			QJsonArray allBlocksAuthorizedFromCurrBlock =
+				(*std::get<0>(*argsref))(path.at(0).toString(), "CTC_AUTHPATH", std::get<3>(*argsref)).toJsonArray();
+			if(!allBlocksAuthorizedFromCurrBlock.isEmpty() && allBlocksAuthorizedFromCurrBlock.first().toString() != "")
+				return;
+		}
+		setAuthorityFromPath(&path, true, 50, argsref);
+	}
+}
 
 
 
-inline void T3CTCOffice::setAuthorityFromPath(const QJsonArray *authorityPath, bool b, MODU_ARGS_REF argsref) {
+//inline void T3CTCOffice::updateAuthorityOnAllTrains(QHash<QString, QString> *dispatchPathMap, MODU_ARGS_REF argsref) {
+//	//find where are all the trains
+//	QJsonArray* trains = std::get<4>(*argsref);
+//	if(trains->size() == 1) {
+//		QString pathQueue = dispatchPathMap->value(trains->at(0).toObject().value("NM_ID").toString());
+//		QJsonArray pathQueueAsJsArray = QJsonArray::fromStringList(pathQueue.split("|"));
+//		//after clearning the authorities, set the authorities,speed,etc  for all blocks included in this authority path
+//		for(qsizetype i = 0; i < pathQueueAsJsArray.size(); ++i) {
+//			//for each block included in this authority path, find all blocks authorized on this current block, and clear their authority
+//			QJsonArray allBlocksAuthorizedFromCurrBlock =
+//				(*std::get<0>(*argsref))(pathQueueAsJsArray.at(0).toString(), "CTC_AUTHPATH", std::get<3>(*argsref)).toJsonArray();
+//			if(!allBlocksAuthorizedFromCurrBlock.isEmpty() && allBlocksAuthorizedFromCurrBlock.first().toString() != "")
+//				setAuthorityFromPath(&allBlocksAuthorizedFromCurrBlock, false, 0, argsref);
+//		}
+//		setAuthorityFromPath(&pathQueueAsJsArray, true, 50, argsref);
+//	}
+//	//try to find if one path solves it all ( no overlapping or direction same but overlapping)
+
+//	//otherwise,grant 1 block each time
+
+//}
+
+
+
+
+inline void T3CTCOffice::setAuthorityFromPath(const QJsonArray *authorityPath, bool b, unsigned int suggestedSpeed, MODU_ARGS_REF argsref) {
 	QString pathAsString;
 	if(b) {
 		for(qsizetype i = 0; i < authorityPath->size(); ++i) {
@@ -469,6 +518,29 @@ inline void T3CTCOffice::setAuthorityFromPath(const QJsonArray *authorityPath, b
 			pathAsString = pathAsString + authorityPath->at(i).toString();
 		}
 	}
+	//QList<QString> CTCPLCIO_VEC;
+	QList<bool> isStationOrEnd;
+	QList<float> maxSafeSpeed;
+	for(qsizetype k = 0; k < authorityPath->size(); ++k) {
+		QString blockId = authorityPath->at(k).toString();
+		//CTCPLCIO_VEC.append(GET_TRACKVAR_F(blockId, "COM[CTC|KC]_CTCPLCIO", argsref).toString());
+		isStationOrEnd.append(GET_TRACKCON_F(blockId, "station", argsref).toString() != "" || k == authorityPath->size() - 1);
+		maxSafeSpeed.append(static_cast<float>(GET_TRACKCON_F(blockId, "speedLimit", argsref).toUInt()));
+	}
+
+	for(int k = 0; k < authorityPath->size(); ++k) {
+		if(isStationOrEnd.at(k)) {
+			for(int l = -5; l <= -1; l++) {
+				int newInd = k + l;
+				if(newInd >= 0 && newInd < maxSafeSpeed.size()) {
+					maxSafeSpeed.replace(newInd, qMin(maxSafeSpeed.at(newInd), float((0.5f + qAbs(l))) * 5.0f) );
+				}
+			}
+		}
+	}
+	qDebug() << isStationOrEnd;
+	qDebug() << maxSafeSpeed;
+	QList<uint8_t> final;
 	for(qsizetype k = 0; k < authorityPath->size() - 1; ++k) {
 		QPair<QString, QString> blockIdPair = {authorityPath->at(k).toString(), authorityPath->at(k + 1).toString()};
 		(*std::get<1>(*argsref))(blockIdPair.first, "CTC_AUTHPATH", std::get<3>(*argsref), pathAsString);
@@ -477,16 +549,25 @@ inline void T3CTCOffice::setAuthorityFromPath(const QJsonArray *authorityPath, b
 //			(b && k <= authorityPath->size() - 1)
 		/*? */
 //			: std::initializer_list<bool> {false, false};
-		QString numberOfBlockAuthorizing = b ? QString::number(static_cast<uint8_t>(authorityPath->size() - k), 2).rightJustified(8, '0') : QString(8, '0');
+		uint8_t numberOfBlocksAuthorizingNumber = static_cast<uint8_t>(authorityPath->size() - k);
+		QString numberOfBlockAuthorizing = b ? QString::number(numberOfBlocksAuthorizingNumber, 2).rightJustified(8, '0') : QString(8, '0');
 		Q_ASSERT(authorityDirection.size() == 2);
+		//CTCPLCIO[1] = b ? '1' : '0';
 		CTCPLCIO[11] = authorityDirection.at(0) ? '1' : '0';
 		CTCPLCIO[12] = authorityDirection.at(1) ? '1' : '0';
 		for(uint i = 20; i >= 13; --i) {
 			CTCPLCIO[i] = numberOfBlockAuthorizing[i - 13];
 		}
-		CTCPLCIO[1] = b ? '1' : '0';
-		Q_ASSERT(CTCPLCIO.size() == 32);
+		uint8_t adjustedSuggestedSpeed = qMin(uint8_t(suggestedSpeed), uint8_t(maxSafeSpeed.at(k)));
+		final.push_back( adjustedSuggestedSpeed);
+		QString suggestedSpeedBinary = b ? QString::number(static_cast<uint8_t>(adjustedSuggestedSpeed), 2).rightJustified(8, '0') : QString(8, '0');
+		for(uint i = 9; i >= 2; --i) {
+			CTCPLCIO[i] = suggestedSpeedBinary[i - 2];
+		}
 		(*std::get<1>(*argsref))(blockIdPair.first, "COM[CTC|KC]_CTCPLCIO", std::get<3>(*argsref), CTCPLCIO);
 	}
+	qDebug() << final;
+
+
 }
 #endif // T3CTCOFFICE_HPP

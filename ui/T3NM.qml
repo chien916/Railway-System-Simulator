@@ -20,6 +20,7 @@ Item {
 	function db2view(includeIO_b){
 		if(trainId_s===""||!reap_trainConstantsDisplay||!reap_trainConstantsDisplay2) return;
 		let metaInfo_A = t3databaseQml.nm_getStringsFromMetaInfo(trainId_s);
+		//console.log(metaInfo_A)
 		text_leftDoorStatus.textContent_s = metaInfo_A[0];
 		text_rightDoorStatus.textContent_s = metaInfo_A[1];
 		text_serviceBrakeStatus.textContent_s = metaInfo_A[2];

@@ -4,6 +4,7 @@ Item {
 	id:root
 	implicitWidth: 500
 	implicitHeight: 500
+	property bool clickedSomewhereElse_b:false
 	property string currValue_s:""
 	property bool isTrack_b:true
 	property variant model_A:{
@@ -47,7 +48,7 @@ Item {
 				Rectangle{
 					anchors.fill: parent
 					color: {
-						if(lVie_listView.currentIndex===index) return T3Styling.cFgSub_c
+						if(!clickedSomewhereElse_b&&lVie_listView.currentIndex===index) return T3Styling.cFgSub_c
 						else if(parent.containsMouse) return T3Styling.cBgMain_c
 						else return "transparent"
 					}
@@ -56,7 +57,8 @@ Item {
 					T3Text{
 						anchors.fill: parent
 						textContent_s:modelData.split("_").join(" ")
-						textColor_c: lVie_listView.currentIndex===index?T3Styling.cBgMain_c:T3Styling.cFgSub_c
+						textColor_c: (lVie_listView.currentIndex===index)
+									 ?T3Styling.cBgMain_c:T3Styling.cFgSub_c
 					}
 				}
 				hoverEnabled: true
@@ -67,6 +69,7 @@ Item {
 					}else {
 						lVie_listView.currentIndex = index
 						root.currValue_s = modelData
+						clickedSomewhereElse_b = false
 					}
 				}
 			}

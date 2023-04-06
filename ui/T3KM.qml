@@ -5,6 +5,7 @@ import QtQuick.Dialogs 1.0
 Item {
 	id:root
 	property string blockId_s:cust_trackSelector.currValue_s
+
 	function view2db(){
 		if(blockId_s==="") return;
 		let metaInfo_A = [
@@ -40,7 +41,7 @@ Item {
 		}
 	}
 	implicitHeight: 600
-	implicitWidth: 800
+	implicitWidth: 1200
 	Rectangle{
 		anchors.fill: parent
 		//radius: T3Styling.margin_r
@@ -62,9 +63,7 @@ Item {
 		title: "Please choose a Track CSV file"
 		folder: shortcuts.home
 		onAccepted: {
-			//plcFilePath_s = fDia_fileDialog.fileUrls.toString()
-			//plcStatus_s = "Loaded"
-			//Qt.quit()
+			t3databaseQml.km_addTrackFromCsv(fDia_fileDialog.fileUrls.toString());
 		}
 		onRejected: {
 			//plcFilePath_s = "N/A"
@@ -88,17 +87,49 @@ Item {
 		width: root.width*0.05
 	}
 	Rectangle{
+		id:item_lineGrid
+		anchors{
+			left:cust_trackSelector.right
+			leftMargin: T3Styling.margin_r
+			top:parent.top
+			topMargin: T3Styling.margin_r
+			bottom: parent.bottom
+			bottomMargin: T3Styling.margin_r
+		}
+		color: "transparent"
+		width: root.width*0.3
+			T3CTCLineGrid{
+				pathsAvailable_sA: [blockId_s]
+				width: parent.height
+				height: parent.width
+				textRotated_b: true
+				positionKnown_b: true
+				anchors.horizontalCenter: parent.horizontalCenter
+				anchors.verticalCenter:  parent.verticalCenter
+				dbIndex_i: cust_trackSelector.currColumn_i
+				rotation: 90
+				onBlockClicked: {
+					cust_trackSelector.clickedSomewhereElse_b = true;
+					cust_trackSelector.currValue_s = blockId_s;
+				}
+			}
+	}
+
+	Rectangle{
 		id:rect_topScreen
 		visible: true
 		anchors{
 			top:parent.top
-			left:cust_trackSelector.right
+			topMargin:T3Styling.margin_r
+			left:item_lineGrid.right
+			leftMargin: T3Styling.margin_r
 			right:parent.right
+			rightMargin: T3Styling.margin_r
 			bottom: rect_bottomScreen.top
+			bottomMargin: T3Styling.margin_r
+			//rightMargin: root.width*0.4
 		}
-
 		color: "transparent"
-		anchors.margins: T3Styling.margin_r
 		Rectangle{
 			id:rect_leftScreen
 			visible: true
@@ -231,16 +262,19 @@ Item {
 		visible: true
 		anchors{
 			//						top:rect_topScreen.bottom
-			left:cust_trackSelector.right
+			left:item_lineGrid.right
+			leftMargin: T3Styling.margin_r
 			right:parent.right
+			rightMargin: T3Styling.margin_r
 			bottom: parent.bottom
+			bottomMargin: T3Styling.margin_r
 		}
 		color: "transparent"
-		anchors.margins: T3Styling.margin_r
 		height: T3Styling.margin_r*5+T3Styling.spacing_r
 		T3ParamUnit{
 			id:cust_envTemp
 			width: parent.width
+			opacity: blockId_s===""?0.5:1
 			height:T3Styling.margin_r*2
 			paramConfig_A: "F_F_Enviromental Temperature_F";
 			maxValue_r: 100
@@ -272,6 +306,7 @@ Item {
 					property bool currState_b: false
 					width: parent.unitWidth_r
 					height:parent.height
+					opacity: blockId_s===""?0.5:1
 					buttonLabel_s: (currState_b?"Revoke":"Invoke")+" Broken Rail Failure"
 					releasedColor_c: currState_b?Qt.darker(T3Styling.cRed_c):T3Styling.cFgSubSub_c
 					onButtonClicked: {
@@ -283,6 +318,7 @@ Item {
 					property bool currState_b: false
 					width: parent.unitWidth_r
 					height:parent.height
+					opacity: blockId_s===""?0.5:1
 					buttonLabel_s: (currState_b?"Revoke":"Invoke")+" Track Circuit Failure"
 					releasedColor_c: currState_b?Qt.darker(T3Styling.cRed_c):T3Styling.cFgSubSub_c
 					onButtonClicked: {
@@ -295,6 +331,7 @@ Item {
 					property bool currState_b: false
 					width: parent.unitWidth_r
 					height:parent.height
+					opacity: blockId_s===""?0.5:1
 					buttonLabel_s: (currState_b?"Revoke":"Invoke")+" Power Failure"
 					releasedColor_c: currState_b?Qt.darker(T3Styling.cRed_c):T3Styling.cFgSubSub_c
 					onButtonClicked: {
@@ -318,7 +355,6 @@ Item {
 					buttonLabel_s:"Load Track CSV"
 					onButtonClicked: {
 						fDia_fileDialog.open()
-						view2db();
 					}
 				}
 				T3Button{
@@ -326,6 +362,7 @@ Item {
 					width: parent.unitWidth_r
 					height:parent.height
 					buttonLabel_s: "Apply"
+					opacity: blockId_s===""?0.5:1
 					releasedColor_c: Qt.darker(T3Styling.cGreen_c)
 					onButtonClicked: {
 						view2db();
@@ -341,12 +378,14 @@ Item {
 	Rectangle{
 		id:rect_frontHelper
 		anchors{
-			left:cust_trackSelector.right
-			margins: T3Styling.margin_r
+			left:item_lineGrid.right
+			leftMargin: T3Styling.margin_r
 			top:parent.top
-			bottom: parent.bottom
-
+			topMargin: T3Styling.margin_r
+			bottom: rect_topScreen.bottom
+			//bottomMargin: T3Styling.spacing_r
 			right: parent.right
+			rightMargin: T3Styling.margin_r
 		}
 		color:T3Styling.cBgSub_c
 		property bool initState_b:true

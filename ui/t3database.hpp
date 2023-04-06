@@ -171,11 +171,12 @@ class T3Database: public QObject {
 	Q_INVOKABLE void ctc_writeToPlcInputFromMetaInfo(const QString blockId, const QJsonArray metaInfo);
 	Q_INVOKABLE QJsonArray ctc_searchPathForAuthority(const QString originBlock, const QString destiBlock);
 	Q_INVOKABLE void ctc_toggleConnection(bool newConnectionState);
+
   signals:
 
 
   private:
-
+	QHash<QString, QStringList> dispatchRequestAndPathMap;
 	//====================================================
 	//==================TRACK-CONTROLLER==================
 	//=====================铁路铁轨控制=====================
@@ -281,20 +282,20 @@ inline T3Database::T3Database(QObject * parent) : QObject(parent) {
 #endif
 	//	//TESTING FOR RAIL LOADING
 	this->currentTime = QTime::currentTime();
-	T3TrackModel::addTrackFromCsv(INITIAL_LINE_CSV_DIR + QString("/T3RedLine.csv"), &stationToBlockIdMap, &MODU_ARGS);
-	T3TrackModel::addTrackFromCsv(INITIAL_LINE_CSV_DIR + QString("/T3GreenLine.csv"), &stationToBlockIdMap, &MODU_ARGS);
-	//T3TrackModel::addTrackFromCsv(INITIAL_LINE_CSV_DIR + QString("/T3BlueLine.csv"), &stationToBlockIdMap, &MODU_ARGS);
+//	T3TrackModel::addTrackFromCsv(INITIAL_LINE_CSV_DIR + QString("/T3RedLine.csv"), &stationToBlockIdMap, &MODU_ARGS);
+//	T3TrackModel::addTrackFromCsv(INITIAL_LINE_CSV_DIR + QString("/T3GreenLine.csv"), &stationToBlockIdMap, &MODU_ARGS);
+//	//T3TrackModel::addTrackFromCsv(INITIAL_LINE_CSV_DIR + QString("/T3BlueLine.csv"), &stationToBlockIdMap, &MODU_ARGS);
 	T3TrackController::addPlcScriptFromCsv(":/T3KCPlcScript.js", &plcRuntime, &plcFunction);
-	//test place new train
-	QJsonArray path = T3CTCOffice::searchPathForAuthority("R_G_21", "R_G_23", &MODU_ARGS);
-	T3TrainModel::createNewTrain("TRA1", path, &MODU_ARGS);
-	T3TrackModel::placeTrain("TRA1", "R_G_21", true, &MODU_ARGS);
+//	//test place new train
+//	QJsonArray path = T3CTCOffice::searchPathForAuthority("R_G_21", "R_G_23", &MODU_ARGS);
+//	T3TrainModel::createNewTrain("TRA1", path, &MODU_ARGS);
+//	T3TrackModel::placeTrain("TRA1", "R_G_21", &MODU_ARGS);
 
 //	path = T3CTCOffice::searchPathForAuthority("R_B_5", "R_A_3", &MODU_ARGS);
 //	T3TrainModel::createNewTrain("TRA2", path, &MODU_ARGS);
 //	T3TrackModel::placeTrain("TRA2", "R_B_5", true, &MODU_ARGS);
 	//QProcess::startDetached("explorer " + filepathString);
-	T3CTCOffice::toggleConnection(true, &MODU_ARGS);
+//	T3CTCOffice::toggleConnection(true, &MODU_ARGS);
 	//localFileEnabled = true;
 	//db_push();
 	//localFileEnabled = false;
@@ -522,7 +523,7 @@ inline void T3Database::timerEvent(QTimerEvent * event) {
 	Q_UNUSED(event);
 	if(this->timerRunning == false) return;
 	//update time
-	this->currentTime = this->currentTime.addMSecs(10000 * static_cast<int>(timerRate));
+	this->currentTime = this->currentTime.addMSecs(1000 * static_cast<int>(timerRate));
 	Q_EMIT onCurrentTimeChanged();
 	if(!busy) nextClockCycle();
 
@@ -544,14 +545,15 @@ inline void T3Database::nextClockCycle() {
 	//===========================CTC OFFICE===============================
 	busy = true;
 	QList<QJsonObject> requestsReady = T3CTCOffice::popFromDispatchQueueAtTime(&(this->dispatchQueue), currentTime);
+	T3CTCOffice::grantAuthorityFromDispatchRequest(&requestsReady, &this->MODU_ARGS);
 	T3TrackController::processAllPlc(&this->plcRuntime, &this->plcFunction, &this->MODU_ARGS);
-	T3TrackModel::updateTrainOccupancyOnAllBlocks(&this->MODU_ARGS);
-	T3TrackModel::updateTrainPositionOnAllBlocks(&this->MODU_ARGS);
+	T3TrackModel::updateTrainOccupancyOnAllBlocks( &this->MODU_ARGS);
+	T3TrackModel::updateTrainPositionOnAllBlocks(timerRate, &this->MODU_ARGS);
 	T3TrainModel::createNewTrainFromDispatchRequests(&requestsReady, &this->MODU_ARGS);
 	T3TrackModel::placeTrainFromDispatchRequest(&requestsReady, &this->MODU_ARGS);
-	T3TrainModel::updateTrainVelocityOnAllTrains(&this->MODU_ARGS);
-	T3TrainController::updateControlSystemsOnAllTrains(currentTime, &MODU_ARGS);
-	T3TrainController::updatePiOnAllTrains(&this->MODU_ARGS);
+	T3TrainModel::updateTrainVelocityOnAllTrains(timerRate, &this->MODU_ARGS);
+	T3TrainController::updateControlSystemsOnAllTrains(timerRate, currentTime, &MODU_ARGS);
+	T3TrainController::updatePiOnAllTrains(timerRate, &this->MODU_ARGS);
 
 	db_push();
 	busy = false;

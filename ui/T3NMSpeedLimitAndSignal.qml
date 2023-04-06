@@ -5,7 +5,7 @@ Item {
 
 	property int currSpeedLimit_i:30
 	//"clear"|"approach"|"stop"
-	property string currSignal_s: "stop"
+	property string currSignal_s: "red"
 	readonly property variant speedLimitIntervals_iA: [80,70,65,60,55,45,40,30,20,15]
 	readonly property int roundedSpeedLimit_i:{
 		for(const currSpeedLimitIntervalPoint_i of speedLimitIntervals_iA){

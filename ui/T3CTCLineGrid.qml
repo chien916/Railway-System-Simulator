@@ -6,9 +6,13 @@ Item {
 	id:root
 	implicitHeight: 300
 	implicitWidth: 1000
+	property bool textRotated_b:false
+	property bool positionKnown_b: true
 	property real unitWidth_r:30
-	property variant trackConstantsObject_O:t3databaseQml.trackConstantsObjects_QML[dbIndex_i]
-	property variant trackVariablesObject_O:t3databaseQml.trackVariablesObjects_QML[dbIndex_i]
+	property bool rotate_b: true
+	property bool unloaded_b:t3databaseQml.trackConstantsObjects_QML.length===0
+	property variant trackConstantsObject_O:unloaded_b?null:t3databaseQml.trackConstantsObjects_QML[dbIndex_i]
+	property variant trackVariablesObject_O:unloaded_b?null:t3databaseQml.trackVariablesObjects_QML[dbIndex_i]
 	property int dbIndex_i:0
 	property variant coordinates_A: solveForCoors_f(trackConstantsObject_O)
 	//property variant blockHovered2_bA: []
@@ -27,26 +31,26 @@ Item {
 		}
 		border.width: T3Styling.lineWidth_r
 		border.color: T3Styling.cFgSubSub_c
-		radius:T3Styling.margin_r
+		radius:T3Styling.spacing_r
 		clip: true
-		SequentialAnimation{
-			running: !load_loader.active
-			loops: Animation.Infinite
-			ColorAnimation{
-				target: rect_canvas
-				property:"color"
-				from: T3Styling.cFgSubSub_c
-				to: T3Styling.cRed_c
-				duration: 1000
-			}
-			ColorAnimation{
-				target: rect_canvas
-				property:"color"
-				from: T3Styling.cRed_c
-				to: T3Styling.cFgSubSub_c
-				duration: 1000
-			}
-		}
+//		SequentialAnimation{
+//			running: !load_loader.active
+//			loops: Animation.Infinite
+//			ColorAnimation{
+//				target: rect_canvas
+//				property:"color"
+//				from: T3Styling.cFgSubSub_c
+//				to: T3Styling.cRed_c
+//				duration: 1000
+//			}
+//			ColorAnimation{
+//				target: rect_canvas
+//				property:"color"
+//				from: T3Styling.cRed_c
+//				to: T3Styling.cFgSubSub_c
+//				duration: 1000
+//			}
+//		}
 		Loader{
 			id:load_loader
 			anchors.fill: parent
@@ -80,6 +84,7 @@ Item {
 			Rectangle{
 				id:rect_blockGrid
 				height: gVie_flickable.height
+				visible: !unloaded_b
 				color: "transparent"
 				width: rect_canvas.numberOfUnitWidthNeeded_r*unitWidth_r+rect_leftConnectorCanvas.width+rect_rightConnectorCanvas.width
 				Rectangle{
@@ -166,11 +171,12 @@ Item {
 						y:coordinates_A[index][1][0]*(height-height*0.1)
 						color: "transparent"
 						T3CTCRailBlock{
+							trainPercentKnown_b: root.positionKnown_b
 							anchors.fill: parent
 							blockId_s:coordinates_A/*[lineObjIndex_i]*/[index][0]
 							bcnPlcOut_s: trackVariablesObject_O[blockId_s]["COM[KC|KM]_BCNPLCOUT"]
 							kmPlcIo_s:trackVariablesObject_O[blockId_s]["COM[KC|KM]_KMPLCIO"]
-							trainPercentKnown_b: true
+							textRotated_b: root.textRotated_b
 							trainPercent_r: {
 								let t_s = trackVariablesObject_O[blockId_s]["KM_TRAINONBLOCK"];
 								let t_splitted =t_s.split("_");
@@ -206,7 +212,15 @@ Item {
 			}
 		}
 	}
+	T3Text{
+		anchors.fill: parent
+		textBold_b: true
+		visible: root.unloaded_b
+		rotation: root.rotate_b?270:0
+		textContent_s: "Track Not Loaded"
+	}
 	function solveForCoors_f(rootObj_O) {
+		if(unloaded_b) return null;
 		let blocksMap_O = rootObj_O["blocksMap"];
 		let currTopBlockId_s = rootObj_O["startingBlock1"];
 		let currBottomBlockId_s = rootObj_O["startingBlock2"];

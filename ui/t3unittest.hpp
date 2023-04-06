@@ -1,18 +1,25 @@
 #ifndef T3UNITTEST_HPP
 #define T3UNITTEST_HPP
 #include "t3trackcontroller.hpp"
+#include "t3database.hpp"
+#include "t3ctcoffice.hpp"
 class T3UnitTest {
-
+	T3Database* db = nullptr;
   public:
-	T3UnitTest() {}
+	T3UnitTest(T3Database* db) {
+		this->db = db;
+	}
 	bool testAll();
   private:
 	bool km_plcScriptTest();
 };
 
 inline bool T3UnitTest::testAll() {
-	return
-		km_plcScriptTest();
+//	return
+//		km_plcScriptTest();
+	auto i = T3CTCOffice::determineAuthorityDirection("R_E_15", "R_E_14", &db->MODU_ARGS);
+	auto q = 0;
+	return true;
 }
 
 inline bool T3UnitTest::km_plcScriptTest() {

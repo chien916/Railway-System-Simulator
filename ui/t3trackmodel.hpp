@@ -4,7 +4,7 @@
 
 class T3TrackModel {
   public:
-	static void placeTrain(const QString trainId, const QString blockId, bool isMovingForward, MODU_ARGS_REF argsref);
+	static void placeTrain(const QString trainId, const QString blockId, MODU_ARGS_REF argsref);
 	static void placeTrainFromDispatchRequest(const QList<QJsonObject>* requests, MODU_ARGS_REF argsref);
 	static void addTrackFromCsv(const QString filePath, QJsonObject* stationToIdMapObject, MODU_ARGS_REF argsref);
 	static QJsonArray getAllTrackIds(MODU_ARGS_REF argsref);
@@ -14,7 +14,7 @@ class T3TrackModel {
 	static void updateTrainOccupancyOnAllBlocks(MODU_ARGS_REF argsref);
 	static void toggleConnection(bool newConnectionState, MODU_ARGS_REF argsref);
 	static QVarLengthArray<QString, 4> getNeighboringBlocks(const QString blockId, MODU_ARGS_REF argsref);
-	static void updateTrainPositionOnAllBlocks(MODU_ARGS_REF argsref);
+	static void updateTrainPositionOnAllBlocks(float timerRate, MODU_ARGS_REF argsref);
   private:
 	static QString getPrevOrNextBlock(const QString blockId, bool getPrev, bool* borderReached, MODU_ARGS_REF argsref);
 };
@@ -171,8 +171,8 @@ inline void T3TrackModel::addTrackFromCsv(const QString filePath, QJsonObject* s
 		currTrackConObjWrapper.insert("startingBlock2", startingBlock.second);
 		currTrackConObjWrapper.insert("endingBlock2",  endingBlock.second);
 		currTrackConObjWrapper.insert("blocksMap", currTrackConObj);
-		std::get<3>(*argsref)->push_back(currTrackVarObj);
-		std::get<2>(*argsref)->push_back(currTrackConObjWrapper);
+		std::get<3>(*argsref)->insert(0, currTrackVarObj);
+		std::get<2>(*argsref)->insert(0, currTrackConObjWrapper);
 	}
 
 	QFile fileToWriteLog(QString(newFilePath).replace(".csv", "_ConstantsJson.json"));
@@ -244,9 +244,10 @@ inline QJsonArray T3TrackModel::getDisplayStrings(const QString blockId, MODU_AR
 	retRaw[22] = (stationhelper.size() == 0 || stationhelper.first() == "") ? "-" :
 				 (QString(stationhelper.at(1).contains("L") ? "LEFT " : "")
 				  + QString(stationhelper.at(1).contains("R") ? "RIGHT" : "")).trimmed(); //	,"Station Sides"
-	retRaw[23] = QString::number(GET_TRACKVAR_F(blockId, "KM_PEOPLEONSTATION", argsref).toUInt());//	,"People on Station"
-	retRaw[24] = "?";//	,"People Boarding"
-	retRaw[25] = "?";//	,"People Disembarking"
+
+	retRaw[23] = retRaw[22] == "" ? "-" : QString::number(GET_TRACKVAR_F(blockId, "KM_PEOPLEONSTATION", argsref).toUInt()); //	,"People on Station"
+	retRaw[24] =  retRaw[22] == "" ? "-" : QString::number(GET_TRACKVAR_F(blockId, "KM_STATIONTOTRAINCOUNT", argsref).toUInt()); //	,"People Boarding""KM_TRAINTOSTATIONCOUNT"
+	retRaw[25] =  retRaw[22] == "" ? "-" : QString::number(GET_TRACKVAR_F(blockId, "KM_TRAINTOSTATIONCOUNT", argsref).toUInt()); //	,"People Disembarking""KM_TRAINTOSTATIONCOUNT"
 	retRaw[26] = " ";//	,"/FAILURE MODES"
 	retRaw[27] = KMPLCIO[6] == '1' ? "YES" : "NO" ; //	,"Broken Rail Failure"
 	retRaw[28] = KMPLCIO[7] == '1' ? "YES" : "NO" ; //	,"Track Circuit Failure"
@@ -322,7 +323,7 @@ inline QVarLengthArray<QString, 4> T3TrackModel::getNeighboringBlocks(const QStr
 	return toReturn;
 }
 
-inline void T3TrackModel::updateTrainPositionOnAllBlocks(MODU_ARGS_REF argsref) {
+inline void T3TrackModel::updateTrainPositionOnAllBlocks(float timerRate, MODU_ARGS_REF argsref) {
 	qDebug() << "I;m running";
 	for(const QJsonValue currTrainRaw : (*std::get<4>(*argsref))) {
 		QJsonObject currTrain = currTrainRaw.toObject();
@@ -331,14 +332,18 @@ inline void T3TrackModel::updateTrainPositionOnAllBlocks(MODU_ARGS_REF argsref) 
 		QString blockId = currTrain.value("NM_BLOCKID").toString();
 		float length = GET_TRACKCON_F(blockId, "length", argsref).toDouble();
 		float velocity = KMH2MS_F(currTrain.value("NC_PREVY").toDouble());
-		const float dt = 1.0f;
+		const float dt = timerRate;
 		//traverse through block
 		float ds = velocity  * dt;
 		QStringList trainOnBlockSplit = GET_TRACKVAR_F(blockId, "KM_TRAINONBLOCK", argsref).toString().split("_");
 		Q_ASSERT(trainOnBlockSplit.count() == 3);
+		if(!trainOnBlockSplit.at(1).contains("F") && !trainOnBlockSplit.at(1).contains("R")) {
+			return;
+		}
 		bool isMovingForward = trainOnBlockSplit.at(1).contains("F");
 		float percentTravelled = trainOnBlockSplit.at(2).toFloat();
-		percentTravelled += ds / length;
+		if(isMovingForward)percentTravelled += ds / length;
+		else percentTravelled -= ds / length;
 		qDebug() << QString("TRAIN %1 SEC AT LENG %2 TRACK TRAVELLED WITH %3 M/S(km/h) SPEED %4 DIR %5 M -> %6 , %7")
 				 .arg(dt)
 				 .arg(length)
@@ -350,15 +355,28 @@ inline void T3TrackModel::updateTrainPositionOnAllBlocks(MODU_ARGS_REF argsref) 
 		qDebug() << QString("PREV PERC %1 , NEW PERC %2")
 				 .arg(trainOnBlockSplit.at(2).toFloat())
 				 .arg(percentTravelled);
-		while(percentTravelled > 1.0f) {
+		while(percentTravelled > 1.0f || percentTravelled < 0.0f) {
 			bool viewReverse = false;
 			QString blockId_new = getPrevOrNextBlock(blockId, !isMovingForward, &viewReverse, argsref);
 			float length_new =  GET_TRACKCON_F(blockId_new, "length", argsref).toDouble();
-			float percentTravelled_new = (length * (percentTravelled - 1.0f)) / length_new;
+			float percentTravelled_new = 0.0f;
+			if(isMovingForward) {//moving forward now 1.1
+				if(viewReverse) percentTravelled_new = 1 - (length * (percentTravelled - 1.0f)) / length_new;
+				else percentTravelled_new = (length * (percentTravelled - 1.0f)) / length_new;
+			} else { //moving backwards now -0.1
+				if(viewReverse) percentTravelled_new = 1 - (length * (1.0f + percentTravelled)) / length_new;
+				else percentTravelled_new = (length * (1.0f + percentTravelled)) / length_new;
+			}
 			if(viewReverse) trainOnBlockSplit.replace(1, trainOnBlockSplit.at(1).contains("F") ? "R" : "F");
 			trainOnBlockSplit.replace(2, QString::number(percentTravelled_new));
+			qDebug() << "TRAIN ON BLOCK NOW => " << trainOnBlockSplit;
 			//clears the train info from previous block
+			QString CTCPLCIO = GET_TRACKVAR_F(blockId, "COM[CTC|KC]_CTCPLCIO", argsref).toString();
+			for(int i = 13; i <= 20; ++i) CTCPLCIO[i] = '0';
+			SET_TRACKVAR_F(blockId, "COM[CTC|KC]_CTCPLCIO", CTCPLCIO, argsref);
 			SET_TRACKVAR_F(blockId, "KM_TRAINONBLOCK", QString(""), argsref);
+			SET_TRACKVAR_F(blockId, "CTC_AUTHPATH", QString(""), argsref);
+
 			blockId = blockId_new;
 			SET_TRAIN_F(trainId, "NM_BLOCKID", blockId, argsref);
 			percentTravelled = percentTravelled_new;
@@ -371,7 +389,7 @@ inline void T3TrackModel::updateTrainPositionOnAllBlocks(MODU_ARGS_REF argsref) 
 					 .arg(ds)
 					 .arg(trainId)
 					 .arg(blockId);
-			qDebug() << QString("PREV PERC %1 , NEW PERC %2")
+			qDebug() << QString("[TVS] PREV PERC %1 , NEW PERC %2")
 					 .arg(trainOnBlockSplit.at(2).toFloat())
 					 .arg(percentTravelled_new);
 		}
@@ -414,8 +432,8 @@ inline QString T3TrackModel::getPrevOrNextBlock(const QString blockId, bool getP
 }
 
 
-inline void T3TrackModel::placeTrain(const QString trainId, const QString blockId, bool isMovingForward, MODU_ARGS_REF argsref) {
-	QString trainOnBlockConcatStr = QString("%1_%2_0.5").arg(trainId, (isMovingForward ? "F" : "R"));//direction doesnt matter for now
+inline void T3TrackModel::placeTrain(const QString trainId, const QString blockId, MODU_ARGS_REF argsref) {
+	QString trainOnBlockConcatStr = QString("%1_%2_0.5").arg(trainId, "?");//direction doesnt matter for now
 	SET_TRACKVAR_F(blockId, "KM_TRAINONBLOCK", trainOnBlockConcatStr, argsref);
 }
 
@@ -426,8 +444,7 @@ inline void T3TrackModel::placeTrainFromDispatchRequest(const QList<QJsonObject>
 		QString destination = currRequest.value("destination").toString();
 		QJsonArray path = currRequest.value("path").toArray();
 		//determine if the train is moving forward or backward
-		bool isForward = true;
-		QString trainOnBlockConcatStr = QString("%1_%2_0.0").arg(trainId).arg(isForward ? "F" : "R");
+		QString trainOnBlockConcatStr = QString("%1_%2_0.0").arg(trainId, "?");
 		//place train on track
 		SET_TRACKVAR_F(origin, "KM_TRAINONBLOCK", trainOnBlockConcatStr, argsref);
 	}

@@ -6,8 +6,8 @@ Item {
 	property variant bKMPLCIO_bA:Array(32).fill(false)
 	property variant bKCPLCIN_bA:Array(32).fill(false)
 	property variant bBCNPLCOUT_bA:Array(32).fill(false)
-	property string plcFilePath_s:"N/A"
-	property string plcStatus_s:"Not Loaded"
+	property string plcFilePath_s:"qrc://T3KCPlcScript.js"
+	property string plcStatus_s:"Pre-loaded (Default PLC Script)"
 	property bool hasGate_b: true
 	property string switchSide_s:"left"
 	property string direction_s:"bidirectional"
@@ -97,6 +97,7 @@ Item {
 		onAccepted: {
 			plcFilePath_s = fDia_fileDialog.fileUrls.toString()
 			plcStatus_s = "Loaded"
+
 			//Qt.quit()
 		}
 		onRejected: {
@@ -550,7 +551,7 @@ Item {
 					Behavior on opacity{PropertyAnimation{easing.type: Easing.OutCirc}}
 					height:T3Styling.fontMain_r*1
 					readOnly_b: !cust_maintainanceMode.valueratio_r>0.5
-					paramConfig_A:"F_T_Forward Auth_mph"
+					paramConfig_A:"F_T_Rev Auth_mph"
 					width: parent.unitWidth_r
 				}
 				T3ParamUnit{

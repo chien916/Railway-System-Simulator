@@ -6,6 +6,7 @@ Item {
 		"00000000000000000000000000000000"
 	property string blockId_s:"G_A_1"
 	property bool noAnimation_b:false
+	property bool textRotated_b: false
 	readonly property bool hasSwitchOnLeft_b: kmPlcIo_s.charCodeAt(24)>48
 	readonly property bool hasSwitchOnRight_b: kmPlcIo_s.charCodeAt(25)>48
 	readonly property bool switchIsUp_b:kmPlcIo_s.charCodeAt(18)>48
@@ -284,7 +285,7 @@ Item {
 			height: root.adaptiveLineWidth_r*3
 			//			radius: height
 			color:adaptiveFgSubSub_c
-			opacity: root.isUndg_b?1:0
+			opacity: root.isUnderground_b?1:0
 		}
 
 		Rectangle{
@@ -297,7 +298,7 @@ Item {
 			color: root.adaptiveFgSubSub_c
 			opacity: (stationOnLeft_b||stationOnRight_b)?1:0
 			Text{
-				text:stationOnLeft_b?"L":""+stationOnRight_b?"R":""
+				text:((stationOnLeft_b?"L":"")+(stationOnRight_b?"R":""))
 				color: T3Styling.cBgSub_c
 				anchors.fill: parent
 				anchors.margins: root.adaptiveLineWidth_r
@@ -393,7 +394,6 @@ Item {
 						easing.type: Easing.InOutQuad
 						duration: noAnimation_b?0:500
 					}}
-
 			}
 		}
 
@@ -467,6 +467,7 @@ Item {
 			Text{
 				id:text_blockId
 				anchors.fill: parent
+				rotation: textRotated_b?270:0
 				text:{
 					let splittedBlockId_s = root.blockId_s.split("_");
 					return splittedBlockId_s[0]+splittedBlockId_s[1]+"\n"+splittedBlockId_s[2]
@@ -488,7 +489,7 @@ Item {
 					}
 				}
 				font.family: "Inter"
-				font.pixelSize: root.adaptiveFontSize_r*2
+				font.pixelSize: root.adaptiveFontSize_r*(textRotated_b?0.7:0.6)
 				fontSizeMode: Text.Fit
 				horizontalAlignment: Text.AlignHCenter
 				verticalAlignment: Text.AlignVCenter
@@ -500,6 +501,6 @@ Item {
 
 	//--TESTING ONLY
 	implicitHeight: 400
-	implicitWidth: 400
+	implicitWidth: 200
 
 }

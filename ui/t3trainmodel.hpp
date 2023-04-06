@@ -15,7 +15,7 @@ class T3TrainModel {
 	static void setCabinTemperature(const QString trainId, const unsigned int temperature, MODU_ARGS_REF argsref);
 	static QJsonArray getStringsFromMetaInfo(const QString trainId, MODU_ARGS_REF argsref);
 	static void embarkAndDisembarkPassangerOnAllTrains(MODU_ARGS_REF argsref);
-	static void updateTrainVelocityOnAllTrains(MODU_ARGS_REF argsref);
+	static void updateTrainVelocityOnAllTrains(float timerRate, MODU_ARGS_REF argsref);
   private:
 
 };
@@ -151,31 +151,31 @@ inline QJsonArray T3TrainModel::getStringsFromMetaInfo(const QString trainId, MO
 	//metaInfo.append(0);//unused
 	{
 		//5- speed limit
-		unsigned int speedLimit =  GET_TRACKCON_F(blockId, "speedLimit", argsref).toUInt();
+		unsigned int speedLimit =  KMH2MPH_F(GET_TRACKCON_F(blockId, "speedLimit", argsref).toUInt());
 		metaInfo.append(speedLimit);
 	}
 
 	{
 		//6- light signal
 		unsigned int authorizedNumberBlock =  BCNPLCOUT.midRef(2, 8).toUInt(nullptr, 2);
-		if(authorizedNumberBlock > 5) metaInfo.append(QString("green"));
-		if(authorizedNumberBlock > 1) metaInfo.append(QString("yellow"));
+		if(authorizedNumberBlock > 3) metaInfo.append(QString("green"));
+		else if(authorizedNumberBlock > 1) metaInfo.append(QString("yellow"));
 		else metaInfo.append(QString("red"));
 	}
 	{
 		//7- powert
-		float power  = (GET_TRAIN_F(trainId, "NC_U", argsref).toFloat());
-		metaInfo.append(power);
+		float power  = GET_TRAIN_F(trainId, "NC_U", argsref).toDouble();
+		metaInfo.append(static_cast<int>(power));
 	}
 	{
 		//8- imperial velocity
 		float impVelocity  = KMH2MPH_F(GET_TRAIN_F(trainId, "NC_PREVY", argsref).toFloat());
-		metaInfo.append(impVelocity);
+		metaInfo.append(static_cast<int>(impVelocity));
 	}
 	{
 		//9- imperial acceleration
 		float impAccel  = M2FOOT_F(GET_TRAIN_F(trainId, "NM_ACCELERATION", argsref).toFloat());
-		metaInfo.append(impAccel);
+		metaInfo.append(static_cast<int>(impAccel));
 	}
 	{
 		//10-length string
@@ -302,12 +302,12 @@ inline void T3TrainModel::embarkAndDisembarkPassangerOnAllTrains(MODU_ARGS_REF a
 	}
 }
 
-inline void T3TrainModel::updateTrainVelocityOnAllTrains(MODU_ARGS_REF argsref) {
+inline void T3TrainModel::updateTrainVelocityOnAllTrains(float timerRate, MODU_ARGS_REF argsref) {
 	for(const QJsonValue& currTrainRaw : qAsConst(*std::get<4>(*argsref))) {
 		QJsonObject currTrain = currTrainRaw.toObject();
 		//Oh dear here comes the physics
 		QString blockId = currTrain.value("NM_BLOCKID").toString();
-		const float dt = 1.0f;
+		const float dt = static_cast<uint>(timerRate);
 		const float g = 9.8f;
 		const float mul = 5e2f;
 		float grade = GET_TRACKCON_F(blockId, "grade", argsref).toDouble();

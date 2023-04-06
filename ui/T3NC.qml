@@ -44,12 +44,12 @@ Item {
 			pid_pid.i_r = metaInfo_A[10]
 			pid_pid.u_r = metaInfo_A[18]
 		}else{
-			if(includeIO_b){
+			if(includeIO_b||autoMode_b){
 				cust_kpToggler.valueratio_r = metaInfo_A[0]?1:0
 				cust_kiToggler.valueratio_r = metaInfo_A[5]?1:0
 			}
 		}
-		if(includeIO_b){
+		if(includeIO_b||autoMode_b){
 			reap_paramsToggle.itemAt(0).valueratio_r= metaInfo_A[1]?1:0;
 			reap_paramsToggle.itemAt(1).valueratio_r= metaInfo_A[2]?1:0;
 			reap_paramsToggle.itemAt(2).valueratio_r= metaInfo_A[3]?1:0;

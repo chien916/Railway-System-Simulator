@@ -11,8 +11,8 @@ class T3TrainController {
 	static void setBrake(const QString trainId, bool emergency, bool value, MODU_ARGS_REF argsref);
 	static void setCtrlParams(const QString trainId, QJsonArray metaInfo, MODU_ARGS_REF argsref);
 	static QJsonArray getMetaInfo(const QString trainId, MODU_ARGS_REF argsref);//does not include pid
-	static void updateControlSystemsOnAllTrains(QTime currentTime, MODU_ARGS_REF argsref);
-	static void updatePiOnAllTrains(MODU_ARGS_REF argsref);
+	static void updateControlSystemsOnAllTrains(float timerRate, QTime currentTime, MODU_ARGS_REF argsref);
+	static void updatePiOnAllTrains(float timerRate, MODU_ARGS_REF argsref);
 	static QString hardwareCmdEval(QString command, MODU_ARGS_REF argsref);
 };
 
@@ -104,9 +104,9 @@ inline QJsonArray T3TrainController::getMetaInfo(const QString trainId, MODU_ARG
 		metaInfo.push_back(static_cast<bool>(BCNPLCOUT[0] == '1'));//15 authority
 		metaInfo.push_back((BCNPLCOUT.midRef(2, 8).toUInt(nullptr, 2)));//16 authority block number
 		if(BCNPLCOUT[26] == '1' && BCNPLCOUT[27] == '1') {
-			metaInfo.push_back(QString("PLATFORM | TRAIN | --------"));
-		} else if(BCNPLCOUT[26] == '1') {
 			metaInfo.push_back(QString("PLATFORM | TRAIN | PLATFORM"));
+		} else if(BCNPLCOUT[26] == '1') {
+			metaInfo.push_back(QString("PLATFORM | TRAIN | --------"));
 		} else if(BCNPLCOUT[27] == '1') {
 			metaInfo.push_back(QString("-------- | TRAIN | PLATFORM"));
 		} else {
@@ -118,7 +118,7 @@ inline QJsonArray T3TrainController::getMetaInfo(const QString trainId, MODU_ARG
 	return QJsonArray::fromVariantList(metaInfo);
 }
 
-inline void T3TrainController::updateControlSystemsOnAllTrains(QTime currentTime, MODU_ARGS_REF argsref) {
+inline void T3TrainController::updateControlSystemsOnAllTrains(float timerRate, QTime currentTime, MODU_ARGS_REF argsref) {
 	for(const QJsonValue currTrainRaw : qAsConst(*std::get<4>(*argsref))) {
 		QJsonObject currTrain = currTrainRaw.toObject();
 		QString trainId = currTrain.value("NM_ID").toString();
@@ -129,8 +129,16 @@ inline void T3TrainController::updateControlSystemsOnAllTrains(QTime currentTime
 				|| currTrain.value("COM[NC_NM]_FAILURE1").toBool()
 				|| currTrain.value("COM[NC_NM]_FAILURE2").toBool()) {
 			SET_TRAIN_F(trainId, "COM[NC_NM]_EBRAKE", true, argsref);
-		}
+		} else SET_TRAIN_F(trainId, "COM[NC_NM]_EBRAKE", false, argsref);
 		if(!currTrain.value("NM_AUTOMODE").toBool()) continue;
+		//direction control
+		{
+			QStringList trainOnBlockSplit = GET_TRACKVAR_F(blockId, "KM_TRAINONBLOCK", argsref).toString().split("_");
+			if(!(BCNPLCOUT.midRef(2, 8).toUInt(nullptr, 2) >= 1)) trainOnBlockSplit[1] = QString("?");
+			else if(BCNPLCOUT.at(0) == '1') trainOnBlockSplit[1] = QString("R");
+			else trainOnBlockSplit[1] = QString("F");
+			SET_TRACKVAR_F(blockId, "KM_TRAINONBLOCK", trainOnBlockSplit.join("_"), argsref);
+		}
 		//light control
 		if(BCNPLCOUT.at(28) == '1' || currentTime < QTime(7, 00) || currentTime > QTime(19, 30)) { //if in tunnel, turn on interior light and exterior light
 			SET_TRAIN_F(trainId, "COM[NC_NM]_EXTLIGHT", true, argsref);
@@ -142,7 +150,7 @@ inline void T3TrainController::updateControlSystemsOnAllTrains(QTime currentTime
 		//station  control[time left]
 		int secondsLeft = currTrain.value("COM[NC_NM]_SECLEFT").toInt();
 		if((BCNPLCOUT.at(26) == '1' || BCNPLCOUT.at(27) == '1')) {
-			if(GET_TRAIN_F(trainId, "NC_PREVY", argsref).toInt() > 5) {
+			if(GET_TRAIN_F(trainId, "NC_PREVY", argsref).toInt() > 5 && secondsLeft == -1) {
 				SET_TRAIN_F(trainId, "COM[NC_NM]_SBRAKE", true, argsref);
 			} else if(secondsLeft == -1) {
 				secondsLeft = 20;
@@ -153,7 +161,7 @@ inline void T3TrainController::updateControlSystemsOnAllTrains(QTime currentTime
 				if(BCNPLCOUT.at(27) == '1') SET_TRAIN_F(trainId, "COM[NC_NM]_RDOOR", true, argsref);
 				else SET_TRAIN_F(trainId, "COM[NC_NM]_RDOOR", false, argsref);
 				SET_TRAIN_F(trainId, "COM[NC_NM]_SBRAKE", true, argsref);
-				secondsLeft -= 1;
+				secondsLeft -= static_cast<uint>(timerRate);
 			} else if(secondsLeft < 5 && secondsLeft != -1) {
 				SET_TRAIN_F(trainId, "COM[NC_NM]_RDOOR", false, argsref);
 				SET_TRAIN_F(trainId, "COM[NC_NM]_LDOOR", false, argsref);
@@ -184,7 +192,7 @@ inline void T3TrainController::updateControlSystemsOnAllTrains(QTime currentTime
 	}
 }
 
-inline void T3TrainController::updatePiOnAllTrains(MODU_ARGS_REF argsref) {
+inline void T3TrainController::updatePiOnAllTrains(float timerRate, MODU_ARGS_REF argsref) {
 	for(const QJsonValue currTrainRaw : qAsConst(*std::get<4>(*argsref))) {
 		QJsonObject currTrain = currTrainRaw.toObject();
 		if(!currTrain.value("NM_AUTOMODE").toBool()) continue;
@@ -194,7 +202,7 @@ inline void T3TrainController::updatePiOnAllTrains(MODU_ARGS_REF argsref) {
 		float r = currTrain.value(("NC_R")).toDouble();
 		float prev_y = currTrain.value(("NC_PREVY")).toDouble();
 		float sum_e = currTrain.value(("NC_SUME")).toDouble();
-		float dt = currTrain.value(("NC_DT")).toDouble();
+		float dt = static_cast<uint>(timerRate);
 		float kp = currTrain.value(("NC_KP")).toDouble();
 		float ki = currTrain.value(("NC_KI")).toDouble();
 //		if((BCNPLCOUT.at(26) == '1' || BCNPLCOUT.at(2) == '1') ) {//if at station

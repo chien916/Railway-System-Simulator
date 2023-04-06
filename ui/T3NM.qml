@@ -4,7 +4,7 @@ import QtQuick.Controls.Styles 1.4
 Item {
 	id:root
 	width: 1200
-	height: 500
+	height: 400
 
 	property string trainId_s:cust_trainSelector.currValue_s
 	onTrainId_sChanged:{
@@ -136,7 +136,7 @@ Item {
 					textContent_s: "N/A"
 					textColor_c:{
 						if(textContent_s==="OPEN") return T3Styling.cYellow_c
-						else return  T3Styling.cGreen_c
+						else return  T3Styling.cFgMain_c
 					}
 					textAlign_s: "right"
 				}
@@ -175,7 +175,7 @@ Item {
 					textContent_s: "N/A"
 					textColor_c:{
 						if(textContent_s==="OPEN") return T3Styling.cYellow_c
-						else return  T3Styling.cGreen_c
+						else return  T3Styling.cFgMain_c
 					}
 					textAlign_s: "right"
 				}
@@ -184,6 +184,7 @@ Item {
 		}
 		T3NMCarView{
 			id:cVie_carView
+
 			anchors{
 				top:colu_leftdoorInfo.bottom
 				topMargin: T3Styling.spacing_r*1.5
@@ -194,6 +195,7 @@ Item {
 				bottom: colu_serviceBrakeInfo.top
 				bottomMargin:  T3Styling.spacing_r*1.5
 			}
+			visible: false
 			leftDoorClosed_b: text_rightDoorStatus.textContent_s === "CLOSED"
 			rightDoorClosed_b: text_leftDoorStatus.textContent_s === "CLOSED"
 			brakeReleased_b: text_serviceBrakeStatus.textContent_s === "RELEASED"
@@ -233,7 +235,7 @@ Item {
 					textContent_s: "N/A"
 					textColor_c:{
 						if(textContent_s==="APPLIED") T3Styling.cYellow_c
-						else return T3Styling.cGreen_c
+						else return T3Styling.cFgMain_c
 					}
 					textAlign_s: "right"
 				}
@@ -274,8 +276,8 @@ Item {
 					textPixelSize_r: T3Styling.fontSubSub_r
 					textContent_s: "N/A"
 					textColor_c:{
-						if(textContent_s=="APPLIED") T3Styling.cRed_c
-						else return T3Styling.cGreen_c
+						if(textContent_s=="APPLIED") T3Styling.cFgMain_c
+						else return T3Styling.cFgMain_c
 					}
 					textAlign_s: "right"
 				}
@@ -310,7 +312,7 @@ Item {
 			style: GaugeStyle {
 				valueBar: Rectangle {
 					implicitWidth: 16
-					color: T3Styling.cGreen_c
+					color: T3Styling.cFgMain_c
 					radius: T3Styling.spacing_r
 				}
 				foreground:Item{}
@@ -349,8 +351,8 @@ Item {
 				textPixelSize_r: T3Styling.fontSubSub_r
 				textContent_s: "N/A"
 				textColor_c:{
-					if(textContent_s=="APPLIED") T3Styling.cRed_c
-					else return T3Styling.cGreen_c
+					if(textContent_s=="APPLIED") T3Styling.cFgMain_c
+					else return T3Styling.cFgMain_c
 				}
 				textAlign_s: "right"
 			}
@@ -468,7 +470,7 @@ Item {
 				textPixelSize_r: T3Styling.fontSubSub_r
 				textContent_s: "N/A"
 				textColor_c:{
-					if(textContent_s=="NO") T3Styling.cRed_c
+					if(textContent_s=="NO") T3Styling.cFgMain_c
 					else return  T3Styling.cFgMain_c
 				}
 				textAlign_s: "right"
@@ -500,7 +502,7 @@ Item {
 				textPixelSize_r: T3Styling.fontSubSub_r
 				textContent_s: "N/A"
 				textColor_c:{
-					if(textContent_s=="0 BLOCKS") T3Styling.cRed_c
+					if(textContent_s=="0 BLOCKS") T3Styling.cFgMain_c
 					else return T3Styling.cFgMain_c
 				}
 				textAlign_s: "right"
@@ -833,9 +835,9 @@ Item {
 							textContent_s: parent.val_s
 							textColor_c: {
 								if(textContent_s==="OK")
-									return T3Styling.cGreen_c
+									return T3Styling.cFgMain_c
 								else if(textContent_s==="ERROR")
-									return T3Styling.cRed_c
+									return T3Styling.cFgMain_c
 								else if(textContent_s==="ON")
 									return T3Styling.cYellow_c
 								else if(textContent_s==="OFF")
@@ -902,7 +904,7 @@ Item {
 			width: parent.unitWidth_r
 			height:parent.height
 			buttonLabel_s: (currState_b?"Revoke":"Invoke")+" Train Engine Failure"
-			releasedColor_c: currState_b?Qt.darker(T3Styling.cRed_c):T3Styling.cFgSubSub_c
+			releasedColor_c: currState_b?Qt.darker(T3Styling.cFgMain_c):T3Styling.cFgSubSub_c
 			onButtonClicked: {
 				currState_b = !currState_b;
 				if(trainId_s==="") return;
@@ -916,7 +918,7 @@ Item {
 			width: parent.unitWidth_r
 			height:parent.height
 			buttonLabel_s: (currState_b?"Revoke":"Invoke")+" Signal Pickup Failure"
-			releasedColor_c: currState_b?Qt.darker(T3Styling.cRed_c):T3Styling.cFgSubSub_c
+			releasedColor_c: currState_b?Qt.darker(T3Styling.cFgMain_c):T3Styling.cFgSubSub_c
 			onButtonClicked: {
 				currState_b = !currState_b;
 				if(trainId_s==="") return;
@@ -930,7 +932,7 @@ Item {
 			width: parent.unitWidth_r
 			height:parent.height
 			buttonLabel_s: (currState_b?"Revoke":"Invoke")+" Brake Failure"
-			releasedColor_c: currState_b?Qt.darker(T3Styling.cRed_c):T3Styling.cFgSubSub_c
+			releasedColor_c: currState_b?Qt.darker(T3Styling.cFgMain_c):T3Styling.cFgSubSub_c
 			onButtonClicked: {
 				currState_b = !currState_b;
 				if(trainId_s==="") return;
@@ -944,7 +946,7 @@ Item {
 			width: parent.unitWidth_r
 			height:parent.height
 			buttonLabel_s: (currState_b?"Revoke":"Invoke")+" Emergency Brake"
-			releasedColor_c: currState_b?Qt.darker(T3Styling.cRed_c):T3Styling.cFgSubSub_c
+			releasedColor_c: currState_b?Qt.darker(T3Styling.cFgMain_c):T3Styling.cFgSubSub_c
 			onButtonClicked: {
 				currState_b = !currState_b;
 				if(trainId_s==="") return;
@@ -1038,8 +1040,8 @@ Item {
 	//		height: T3Styling.margin_r*2
 	//		buttonLabel_s: "EMERGENCY BRAKE"
 	//		buttonTextPixelSize_r: T3Styling.fontMain_r*3
-	//		pressedColor_c: T3Styling.cRed_c
-	//		releasedColor_c:Qt.darker(T3Styling.cRed_c)
+	//		pressedColor_c: T3Styling.cFgMain_c
+	//		releasedColor_c:Qt.darker(T3Styling.cFgMain_c)
 	//		delayButton_b: true
 	//	}
 }

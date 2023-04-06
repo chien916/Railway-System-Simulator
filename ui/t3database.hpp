@@ -522,7 +522,7 @@ inline void T3Database::timerEvent(QTimerEvent * event) {
 	Q_UNUSED(event);
 	if(this->timerRunning == false) return;
 	//update time
-	this->currentTime = this->currentTime.addMSecs(1000 * static_cast<int>(timerRate));
+	this->currentTime = this->currentTime.addMSecs(10000 * static_cast<int>(timerRate));
 	Q_EMIT onCurrentTimeChanged();
 	if(!busy) nextClockCycle();
 

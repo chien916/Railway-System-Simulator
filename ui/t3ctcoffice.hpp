@@ -247,7 +247,7 @@ inline QJsonArray T3CTCOffice::searchPathsFromCsv(const QString filePath, const 
 					QJsonArray currDispatchMetaInfo = {"____", i == -1 ? yardId : currStationBlockIds.at(i), currStationBlockIds.at(i + 1), "__:__"};
 					QJsonArray currPossiblePaths = searchPathsFromMetaInfo(currDispatchMetaInfo, argsref);
 
-					//find the smallest path connecting the current 2 stations
+					//find the smallest path connecting the-=ui08 current 2 stations
 					QPair<qsizetype, qsizetype> smallest = qMakePair(-1, 0);
 					{
 						for(qsizetype j = 0; j < currPossiblePaths.size(); ++j) { //for each possible path of current path-finding origin and destination block
@@ -263,6 +263,8 @@ inline QJsonArray T3CTCOffice::searchPathsFromCsv(const QString filePath, const 
 					if(smallest.first != -1) {
 						QJsonArray bestPossiblePath = currPossiblePaths.at(smallest.first).toArray();
 						for(qsizetype j = 0; j < bestPossiblePath.size(); ++j) {
+							//2023-4-23修改 防止duplicate blocks in path.
+							if(possiblePathForThisComb.last().toString() == bestPossiblePath.at(j).toString()) continue;
 							possiblePathForThisComb.push_back(bestPossiblePath.at(j).toString());
 						}
 					} else {

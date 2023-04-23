@@ -23,7 +23,7 @@ class T3TrainModel {
 inline void T3TrainModel::removeTrain(const QString trainId, MODU_ARGS_REF argsref) {
 	for(qsizetype i = 0; i < std::get<4>(*argsref)->count(); ++i) {
 		QJsonObject currTrainObject = std::get<4>(*argsref)->at(i).toObject();
-		if(currTrainObject.value(QString("id")).toString().trimmed() == trainId.trimmed()) {
+		if(currTrainObject.value(QString("NM_ID")).toString().trimmed() == trainId.trimmed()) {
 			std::get<4>(*argsref)->removeAt(i);
 			return;
 		}
@@ -75,9 +75,9 @@ inline void T3TrainModel::createNewTrain(const QString trainId, const QJsonArray
 	trainObject.insert(QString("NC_KP"), 0.5);
 	trainObject.insert(QString("NC_U"), 0.0);//output power
 
-	Q_ASSERT(path.size() >= 2);
+	Q_ASSERT(path.size() >= 1);
 	trainObject.insert(QString("NM_BLOCKID"), path.at(0).toString());
-	trainObject.insert(QString("NM_NEXTBLOCKID"), path.at(1).toString());
+	//trainObject.insert(QString("NM_NEXTBLOCKID"), path.at(1).toString());
 	std::get<4>(*argsref)->push_front(trainObject);
 }
 

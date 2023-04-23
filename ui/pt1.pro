@@ -24,8 +24,7 @@ HEADERS += \
 	t3ctcoffice.hpp \
 	t3database.hpp \
 	t3prophelper.h \
-	t3serialserver.hpp \
-	t3serialsimulator.hpp \
+	t3serialadapter.hpp \
 	t3trackcontroller.hpp \
 	t3trackmodel.hpp \
 	t3traincontroller.hpp \

@@ -561,7 +561,7 @@ Item {
 					(fDia_selectScheduleDialog.fileUrl,[tInp_dispatchTrain.text,"NA","NA",tInp_dispatchAt.text]);
 
 			if(root.possiblePaths_A.length>0) root.pathSelectionMode_b = true;
-			dispatchRequested(["SCED",root.possiblePaths_A[0][0],root.possiblePaths_A[0][root.possiblePaths_A[0].length-1],dispatchTime_s],root.possiblePaths_A[0]);
+			dispatchRequested(["SCED",root.possiblePaths_A[0][0],root.possiblePaths_A[0][root.possiblePaths_A[0].length-1],"01:01"],root.possiblePaths_A[0]);
 			possiblePaths_A = [];
 			currSelectedPathInd_n = -1;
 			pathSelectionMode_b = false;

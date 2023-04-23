@@ -427,7 +427,9 @@ inline QString T3TrackModel::getPrevOrNextBlock(const QString blockId, bool getP
 			Q_ASSERT(*borderReached);
 		}
 	}
-	Q_ASSERT(toReturn != "");
+	if(toReturn == "") {
+		qFatal("T3TrackModel::getPrevOrNextBlock() -> cannot find prev or next block.");
+	}
 	return toReturn;
 }
 

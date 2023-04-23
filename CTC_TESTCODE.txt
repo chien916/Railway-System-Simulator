@@ -1,0 +1,197 @@
+// Test searchPathsFromCsv
+void Test_searchPathsFromCsv() {
+    // Create test inputs
+    QString filePath = "test.csv";
+    QJsonObject stationToBlockIdMap = {{"station1", "block1"}, {"station2", "block2"}};
+    QJsonArray dispatchMetaInfo = {{"meta1"}, {"meta2"}};
+    MODU_ARGS_REF argsref;
+    
+    // Call the function
+    QJsonArray result = searchPathsFromCsv(filePath, &stationToBlockIdMap, dispatchMetaInfo, argsref);
+    
+    // Check the output
+    QCOMPARE(result.size(), 2);
+    QCOMPARE(result.at(0).toString(), QString("path1"));
+    QCOMPARE(result.at(1).toString(), QString("path2"));
+}
+
+
+// Test enqueueDispatchRequest
+void Test_enqueueDispatchRequest() {
+    // Create test inputs
+    QJsonArray queue = {{"request1"}, {"request2"}};
+    QJsonArray dispatchMetaInfo = {{"meta1"}, {"meta2"}};
+    QJsonArray path = {{"path1"}};
+    
+    // Call the function
+    enqueueDispatchRequest(&queue, dispatchMetaInfo, path);
+    
+    // Check the output
+    QCOMPARE(queue.size(), 3);
+    QCOMPARE(queue.at(2).toArray().at(0).toString(), QString("path1"));
+}
+
+
+// Test discardDispatchRequest
+void Test_discardDispatchRequest() {
+    // Create test inputs
+    QJsonArray queue = {{"request1"}, {"request2"}};
+    int index = 1;
+    
+    // Call the function
+    discardDispatchRequest(index, &queue);
+    
+    // Check the output
+    QCOMPARE(queue.size(), 1);
+    QCOMPARE(queue.at(0).toString(), QString("request1"));
+}
+
+
+// Test popFromDispatchQueueAtTime
+void Test_popFromDispatchQueueAtTime() {
+    // Create test inputs
+    QJsonArray queue = {{{"time": "12:00"}, {"request": "request1"}}, {{"time": "13:00"}, {"request": "request2"}}};
+    QTime currTime(12, 30);
+    
+    // Call the function
+    QList<QJsonObject> result = popFromDispatchQueueAtTime(&queue, currTime);
+    
+    // Check the output
+    QCOMPARE(result.size(), 1);
+    QCOMPARE(result.at(0).value("request").toString(), QString("request1"));
+}
+
+
+// Test searchPathsFromMetaInfo
+void Test_searchPathsFromMetaInfo() {
+    // Create test inputs
+    QJsonArray dispatchMetaInfo = {{{"meta1", "block1"}}, {{"meta2", "block2"}}};
+    MODU_ARGS_REF argsref;
+    
+    // Call the function
+    QJsonArray result = searchPathsFromMetaInfo(dispatchMetaInfo, argsref);
+    
+    // Check the output
+    QCOMPARE(result.size(), 2);
+    QCOMPARE(result.at(0).toString(), QString("path1"));
+    QCOMPARE(result.at(1).toString(), QString("path2"));
+}
+
+
+// Test writeToPlcInputFromMetaInfo
+void Test_writeToPlcInputFromMetaInfo() {
+    // Create test inputs
+    QString blockId = "block1";
+    QJsonArray metaInfo = {{"meta1"}, {"meta2"}};
+    MODU_ARGS_REF argsref;
+    
+    // Call the function
+    writeToPlcInputFromMetaInfo(blockId, metaInfo, argsref);
+    
+    
+    QVERIFY(argsref.size()>0);
+}
+
+
+
+void Test_iterate() {
+    // Create test inputs
+    MODU_ARGS_REF argsref;
+    QJSEngine* plcRuntime = new QJSEngine();
+    QJSValue* plcFunction = new QJSValue();
+    
+    // Call the function
+    iterate(argsref, plcRuntime, plcFunction);
+    
+    
+    QVERIFY(argsref.size()>0);
+}
+
+
+// Test addPlcScriptFromCsv
+void Test_addPlcScriptFromCsv() {
+    // Create test inputs
+    QString filePath = "script.csv";
+    QJSEngine* runTime = new QJSEngine();
+    QJSValue* function = new QJSValue();
+    
+    // Call the function
+    addPlcScriptFromCsv(filePath, runTime, function);
+    
+    
+    QVERIFY(argsref.size()>0);
+}
+
+
+// Test runPlcScript
+void Test_runPlcScript() {
+    // Create test inputs
+    QString CTCPLCIO = "CTCPLCIO";
+    QString BCNPLCOUT = "BCNPLCOUT";
+    QString KMPLCIO = "KMPLCIO";
+    QString KCPLCIN = "KCPLCIN";
+    QJSEngine* runTime = new QJSEngine();
+    QJSValue* function = new QJSValue();
+    
+    // Call the function
+    runPlcScript(CTCPLCIO, BCNPLCOUT, KMPLCIO, KCPLCIN, runTime, function);
+    
+    
+    QVERIFY(argsref.size()>0);
+}
+
+
+// Test processPlc
+void Test_processPlc() {
+    // Create test inputs
+    QString blockId = "block1";
+    QJSEngine* plcRuntime = new QJSEngine();
+    QJSValue* plcFunction = new QJSValue();
+    MODU_ARGS_REF argsref;
+    
+    // Call the function
+    processPlc(blockId, plcRuntime, plcFunction, argsref);
+    
+    
+    QVERIFY(argsref.size()>0);
+}
+
+
+// Test processAllPlc
+void Test_processAllPlc() {
+    // Create test inputs
+    QJSEngine* plcRuntime = new QJSEngine();
+    QJSValue* plcFunction = new QJSValue();
+    MODU_ARGS_REF argsref;
+    
+    // Call the function
+    processAllPlc(plcRuntime, plcFunction, argsref);
+    
+    
+    QVERIFY(argsref.size()>0);
+}
+
+
+// Test readPlcToMetaInfo
+void Test_readPlcToMetaInfo() {
+    // Create test inputs
+    QString blockId = "block1";
+    MODU_ARGS_REF argsref;
+    
+    // Call the function
+    QJsonArray result = readPlcToMetaInfo(blockId, argsref);
+    
+    
+    QVERIFY(argsref.size()>0);
+}
+
+
+// Test writePlcFromMetaInfo
+void Test_writePlcFromMetaInfo() {
+    // Create test inputs
+    QString blockId = "block1";
+    QJsonArray metaInfo = {{{"info1"}, {"info2"}}};
+    MODU_ARGS_REF argsref;
+    
+    // Call the function
+    writePlcFromMetaInfo(blockId, metaInfo, argsref);

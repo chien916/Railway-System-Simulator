@@ -276,6 +276,13 @@ inline QJsonArray T3TrainModel::getStringsFromMetaInfo(const QString trainId, MO
 			metaInfo.push_back(QString(""));
 		}
 	}
+	{
+		//31 - bool -> if on switch
+		bool isOnSwitchBlock =
+			GET_TRACKCON_F(blockId, "nextBlock2", argsref).toString() != ""
+			|| GET_TRACKCON_F(blockId, "prevBlock2", argsref).toString() != "";
+		metaInfo.push_back(isOnSwitchBlock);
+	}
 	return QJsonArray::fromVariantList(metaInfo);
 }
 

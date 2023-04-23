@@ -551,7 +551,7 @@ Item {
 					Behavior on opacity{PropertyAnimation{easing.type: Easing.OutCirc}}
 					height:T3Styling.fontMain_r*1
 					readOnly_b: !cust_maintainanceMode.valueratio_r>0.5
-					paramConfig_A:"F_T_Rev Auth_mph"
+					paramConfig_A:"F_T_Fwd Auth_mph"
 					width: parent.unitWidth_r
 				}
 				T3ParamUnit{

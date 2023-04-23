@@ -413,12 +413,12 @@ inline void T3CTCOffice::writeToPlcInputFromMetaInfo(const QString blockId, cons
 	{
 		Q_ASSERT(CTCPLCIO.size() == 32);
 //		CTCPLCIO[0] =  '1';//if sent always connected assumed
-//		CTCPLCIO[1] = metaInfo.at(0).toBool() ? '1' : '0';
+		CTCPLCIO[1] = metaInfo.at(0).toBool() ? '1' : '0';
 //		//authority is handled from previous step
-//		QString truncatedSuggestedSpeed = QString::number(static_cast<uint8_t>(MPH2KMH_F(metaInfo.at(1).toDouble())), 2).rightJustified(8, '0');
-//		for(uint i = 9; i >= 2; --i) {
-//			CTCPLCIO[i] = truncatedSuggestedSpeed[i - 2];
-//		}
+		QString truncatedSuggestedSpeed = QString::number(static_cast<uint8_t>(MPH2KMH_F(metaInfo.at(1).toDouble())), 2).rightJustified(8, '0');
+		for(uint i = 9; i >= 2; --i) {
+			CTCPLCIO[i] = truncatedSuggestedSpeed[i - 2];
+		}
 		CTCPLCIO[21] =  metaInfo.at(2).toBool() ? '1' : '0';
 	}
 	SET_TRACKVAR_F(blockId, "COM[CTC|KC]_CTCPLCIO", CTCPLCIO, argsref);

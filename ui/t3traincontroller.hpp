@@ -57,11 +57,11 @@ inline void T3TrainController::setKpAndKi(const QString trainId, float kp, float
 inline void T3TrainController::setCtrlParams(const QString trainId, QJsonArray metaInfo, MODU_ARGS_REF argsref) {
 
 	//meta info check
-	Q_ASSERT(metaInfo.count() == 7);
-	for(qsizetype i = 0; i < metaInfo.count(); ++i) {
-		if(i != metaInfo.count() - 1)Q_ASSERT(metaInfo.at(i).isBool());
-		else Q_ASSERT(metaInfo.at(i).isDouble());
-	}
+	Q_ASSERT(metaInfo.count() == 8);
+//	for(qsizetype i = 0; i < metaInfo.count(); ++i) {
+//		if(i != metaInfo.count() - 1)Q_ASSERT(metaInfo.at(i).isBool());
+//		else Q_ASSERT(metaInfo.at(i).isDouble());
+//	}
 	SET_TRAIN_F(trainId, "COM[NC_NM]_SBRAKE", metaInfo.at(0).toBool(), argsref);
 	SET_TRAIN_F(trainId, "COM[NC_NM]_EBRAKE", metaInfo.at(1).toBool(), argsref);
 	SET_TRAIN_F(trainId, "COM[NC_NM]_LDOOR", metaInfo.at(2).toBool(), argsref);
@@ -69,6 +69,7 @@ inline void T3TrainController::setCtrlParams(const QString trainId, QJsonArray m
 	SET_TRAIN_F(trainId, "COM[NC_NM]_EXTLIGHT", metaInfo.at(4).toBool(), argsref);
 	SET_TRAIN_F(trainId, "COM[NC_NM]_INTLIGHT", metaInfo.at(5).toBool(), argsref);
 	SET_TRAIN_F(trainId, "NC_R", MPH2KMH_F(metaInfo.at(6).toDouble()), argsref);
+	SET_TRAIN_F(trainId, "NM_AUTOMODE", metaInfo.at(7).toBool(), argsref);
 }
 
 inline QJsonArray T3TrainController::getMetaInfo(const QString trainId, MODU_ARGS_REF argsref) {
@@ -79,7 +80,8 @@ inline QJsonArray T3TrainController::getMetaInfo(const QString trainId, MODU_ARG
 	metaInfo.push_back(GET_TRAIN_F(trainId, "COM[NC_NM]_EXTLIGHT", argsref).toBool());//3
 	metaInfo.push_back(GET_TRAIN_F(trainId, "COM[NC_NM]_INTLIGHT", argsref).toBool());//4
 	metaInfo.push_back(GET_TRAIN_F(trainId, "COM[NC_NM]_EBRAKE", argsref).toBool());//5
-	metaInfo.push_back(qRound(KMH2MPH_F(GET_TRAIN_F(trainId, "NC_R", argsref).toFloat()))); //current set point 6
+	bool brakeIsOn = (metaInfo[0].toBool() || metaInfo[5].toBool());
+	metaInfo.push_back(brakeIsOn ? 0.0f : qRound(KMH2MPH_F(GET_TRAIN_F(trainId, "NC_R", argsref).toFloat()))); //current set point 6
 	metaInfo.push_back(qRound(KMH2MPH_F(GET_TRAIN_F(trainId, "NC_PREVY", argsref).toFloat()) )); //7 current velocity
 	{
 		const float e = GET_TRAIN_F(trainId, "NC_PREVE", argsref).toFloat();
@@ -113,8 +115,7 @@ inline QJsonArray T3TrainController::getMetaInfo(const QString trainId, MODU_ARG
 			metaInfo.push_back(QString(""));
 		}//17 stationinfo string
 	}
-	metaInfo.push_back(qAbs(qRound(GET_TRAIN_F(trainId, "NC_U", argsref).toFloat()))); //18 currPower
-
+	metaInfo.push_back(brakeIsOn ? 0.0f : qAbs(qRound(GET_TRAIN_F(trainId, "NC_U", argsref).toFloat()))); //18 currPower
 	return QJsonArray::fromVariantList(metaInfo);
 }
 
@@ -129,7 +130,7 @@ inline void T3TrainController::updateControlSystemsOnAllTrains(float timerRate, 
 				|| currTrain.value("COM[NC_NM]_FAILURE1").toBool()
 				|| currTrain.value("COM[NC_NM]_FAILURE2").toBool()) {
 			SET_TRAIN_F(trainId, "COM[NC_NM]_EBRAKE", true, argsref);
-		} else SET_TRAIN_F(trainId, "COM[NC_NM]_EBRAKE", false, argsref);
+		}
 		if(!currTrain.value("NM_AUTOMODE").toBool()) continue;
 		//direction control
 		{

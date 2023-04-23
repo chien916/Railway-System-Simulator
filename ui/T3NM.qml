@@ -21,15 +21,20 @@ Item {
 		if(trainId_s===""||!reap_trainConstantsDisplay||!reap_trainConstantsDisplay2) return;
 		let metaInfo_A = t3databaseQml.nm_getStringsFromMetaInfo(trainId_s);
 		//console.log(metaInfo_A)
+
 		text_leftDoorStatus.textContent_s = metaInfo_A[0];
 		text_rightDoorStatus.textContent_s = metaInfo_A[1];
 		text_serviceBrakeStatus.textContent_s = metaInfo_A[2];
 		text_emergencyBrakeStatus.textContent_s = metaInfo_A[3];
 		cust_speedLimitAndSignal.currSpeedLimit_i = metaInfo_A[5];
 		cust_speedLimitAndSignal.currSignal_s = metaInfo_A[6];
-		cGau_power.currValue_n = metaInfo_A[7];
+		let brakeIsOn_b = text_serviceBrakeStatus.textContent_s==="APPLIED"
+			||text_emergencyBrakeStatus.textContent_s==="APPLIED";
+
+		cGau_power.currValue_n = brakeIsOn_b?0:metaInfo_A[7];
 		cGau_velocity.currValue_n = metaInfo_A[8];
 		cGau_acceleration.currValue_n = metaInfo_A[9];
+
 		reap_trainConstantsDisplay.itemAt(0).val_s = metaInfo_A[10];
 		reap_trainConstantsDisplay.itemAt(1).val_s = metaInfo_A[11];
 		reap_trainConstantsDisplay.itemAt(2).val_s = metaInfo_A[12];
@@ -54,6 +59,7 @@ Item {
 			butt_powerFailure.currState_b = metaInfo_A[23];
 			cust_trainTemperature.valueratio_r = metaInfo_A[25]/cust_trainTemperature.maxValue_r;
 		}
+		//cust_trainSound.onSwitch_b = metaInfo_A[31];
 	}
 	Rectangle{
 		id:rect_canvas
@@ -86,8 +92,15 @@ Item {
 		model_A: t3databaseQml?t3databaseQml.trainIds_QML:[[""]]
 		width: root.width*0.05
 	}
-
-
+//	T3TrainSound{
+//		id:cust_trainSound
+//		velocityRatio_r: cGau_velocity.currValue_n/cGau_velocity.maxValue_n;
+//		brakeRatio_r: {
+//			if(text_emergencyBrakeStatus.textContent_s==="APPLIED") return 1.0;
+//			else if(text_serviceBrakeStatus.textContent_s==="APPLIED") return 0.5;
+//			else return 0;
+//		}
+//	}
 
 	Rectangle{
 		id:rect_leftScreen

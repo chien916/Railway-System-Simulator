@@ -8,7 +8,10 @@ Item {
 	property bool engineerMode_b:false
 	onEngineerMode_bChanged: db2view(true);
 	property bool autoMode_b:true
-	onAutoMode_bChanged: db2view(true);
+	onAutoMode_bChanged: {
+		db2view(true);
+		view2db();
+	}
 	property bool stationMode_b:text_stationInfo.textContent_s!==""
 	property string trainId_s:cust_trainSelector.currValue_s
 	onTrainId_sChanged:{
@@ -65,7 +68,7 @@ Item {
 			let kp_r = cust_kpToggler.actualValue_r ;
 			let ki_r = cust_kiToggler.actualValue_r;
 			t3databaseQml.nc_setKpAndKi(trainId_s,kp_r,ki_r);
-		}else if(!autoMode_b){
+		}else /*if(!autoMode_b)*/{
 			if(!reap_paramsToggle) return;
 			let metaInfo_A = [
 					cust_kpToggler.valueratio_r>0.5,
@@ -74,7 +77,8 @@ Item {
 					reap_paramsToggle.itemAt(1).valueratio_r>0.5,
 					reap_paramsToggle.itemAt(2).valueratio_r>0.5,
 					reap_paramsToggle.itemAt(3).valueratio_r>0.5,
-					cust_speedSetpoint.actualValue_r
+					cust_speedSetpoint.actualValue_r,
+					autoMode_b
 				];
 			console.log(metaInfo_A)
 			t3databaseQml.nc_setCtrlParams(trainId_s,metaInfo_A);

@@ -244,7 +244,7 @@ inline void T3TrackController::writePlcFromMetaInfo(const QString blockId, const
 		KCPLCIN[11] = leftSignal[1];
 
 		//right signal
-		QString rightSignal = metaInfo.at(5).toString();
+		QString rightSignal = metaInfo.at(7).toString();
 		if(rightSignal == "yellow") rightSignal = "01";
 		else if(rightSignal == "green") rightSignal = "10";
 		else rightSignal = "00";
@@ -256,6 +256,8 @@ inline void T3TrackController::writePlcFromMetaInfo(const QString blockId, const
 		if(switchPosition == "up") switchPosition = "11";
 		else if(switchPosition == "down") switchPosition = "01";
 		else switchPosition = "00";
+		KCPLCIN[26] = switchPosition[0];
+		KCPLCIN[27] = switchPosition[1];
 	}
 	{
 		//maintananceMode

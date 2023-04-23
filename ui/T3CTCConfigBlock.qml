@@ -304,6 +304,7 @@ Item {
 				cust_switchDial.currValue_n===0.36,
 				tInp_dispatchFrom.text.split(" ").join("_")
 			]
+		console.log(blockId_s,metaInfo_A);
 		t3databaseQml.ctc_writeToPlcInputFromMetaInfo(blockId_s,metaInfo_A);
 	}
 

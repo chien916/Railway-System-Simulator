@@ -1,0 +1,123 @@
+#include <ezButton.h>
+#include <LiquidCrystal_I2C.h>
+
+#include "t3serialserver.hpp"
+
+// set up lcd screen object
+  LiquidCrystal_I2C lcd(0x27, 16, 2);
+  
+void setup() {
+  // put your setup code here, to run once:
+
+  Serial.begin(9600);
+
+  // create object of T3SerialServer class
+  T3SerialServer tss;
+
+
+  
+
+  
+  char *ftop = new char;
+ // char *fbottom = new char;
+  
+  ezButton okButton(2); // OK button is pin 2
+  ezButton backButton(3); // Back button is pin 3
+  ezButton nextButton(4); // Next button is pin 4
+  ezButton upButton(5); // Up button is pin 5
+  ezButton downButton(6); // Down button is pin 6
+  
+  
+  void (*_LOOPBUTTONHANDLERS_WRAPPER[5])(void) = {
+      &_LOOPBUTTONHANDLER_WRAPPER_OKAY, &_LOOPBUTTONHANDLER_WRAPPER_BACK, 
+      &_LOOPBUTTONHANDLER_WRAPPER_NEXT, &_LOOPBUTTONHANDLER_WRAPPER_UP, 
+      &_LOOPBUTTONHANDLER_WRAPPER_DOWN, 
+    }
+  
+  
+  
+  
+  
+
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+  
+   // check if okbutton is pressed
+  okButton.loop();
+  
+  if (okButton.isPressed()) {
+    (_LOOPBUTTONSHANDLERS_WRAPPER[0])();
+
+    tss.flush(ftop, fbottom);
+    lcd.setCursor(0,0);
+    lcd.print(*ftop);
+    lcd.setCursor(0,1);
+   // lcd.print(*fbottom);
+  }
+  
+  // Check if backbutton is pressed
+  backButton.loop();
+
+  if (backButton.isPressed()) {
+    (_LOOPBUTTONHANDLERS_WRAPPER[1])();
+    
+    tss.flush(ftop);
+    lcd.setCursor(0,0);
+    lcd.print(*ftop);
+    lcd.setCursor(0,1);
+   // lcd.print(*fbottom);
+      
+  }
+
+
+  // check if nextbutton is pressed
+  nextButton.loop();
+  
+  if (nextButton.isPressed()) {
+    (_LOOPBUTTONHANDLERS_WRAPPER[2])();
+    
+    tss.flush(ftop);
+    lcd.setCursor(0,0);
+    lcd.print(*ftop);
+    lcd.setCursor(0,1);
+  //  lcd.print(*fbottom);
+  }
+
+
+  // check if upbutton is pressed
+  upButton.loop();
+  
+  if (upButton.isPressed()) {
+    (_LOOPBUTTONHANDLERS_WRAPPER[3])();
+    
+    tss.flush(ftop);
+    lcd.setCursor(0,0);
+    lcd.print(*ftop);
+    lcd.setCursor(0,1);
+   // lcd.print(*fbottom);
+  }
+
+
+
+  // check if downbutton is pressed
+  downButton.loop();
+  
+  if (downButton.isPressed()) {
+    (_LOOPBUTTONHANDLERS_WRAPPER[4])();
+    
+    tss.flush(ftop);
+    lcd.setCursor(0,0);
+    lcd.print(*ftop);
+    lcd.setCursor(0,1);
+  //  lcd.print(*fbottom);
+  }
+
+
+
+ 
+
+  
+
+}

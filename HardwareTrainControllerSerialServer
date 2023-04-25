@@ -1,25 +1,39 @@
 #include <ezButton.h>
 #include <LiquidCrystal_I2C.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #include "t3serialserver.hpp"
 
+
+// create object of T3SerialServer class
+T3SerialServer t3serialserver;
+
+  
 // set up lcd screen object
-  LiquidCrystal_I2C lcd(0x27, 16, 2);
+LiquidCrystal_I2C lcd(0x27, 16, 2);
   
-void setup() {
-  // put your setup code here, to run once:
+bool _BUTTONS_BUFFER[5] = {false, false, false, false, false};
+void _INTERRUPTHANDLER_WRAPPER_OKAY(void) { _BUTTONS_BUFFER[0] = true; };
+void _INTERRUPTHANDLER_WRAPPER_BACK(void) { _BUTTONS_BUFFER[1] = true; };
+void _INTERRUPTHANDLER_WRAPPER_NEXT(void) { _BUTTONS_BUFFER[2] = true; };
+void _INTERRUPTHANDLER_WRAPPER_UP(void) { _BUTTONS_BUFFER[3] = true; };
+void _INTERRUPTHANDLER_WRAPPER_DOWN(void) { _BUTTONS_BUFFER[4] = true; };
+void _INTERRUPTHANDLER_WRAPPER_CLEARBUFFER(void) {
+  _BUTTONS_BUFFER[0] = _BUTTONS_BUFFER[1] = _BUTTONS_BUFFER[2] =
+      _BUTTONS_BUFFER[3] = _BUTTONS_BUFFER[4] = false;
+};
+void _LOOPBUTTONHANDLER_WRAPPER_OKAY(void) { t3serialserver.okay(); };
+void _LOOPBUTTONHANDLER_WRAPPER_BACK(void) { t3serialserver.back(); };
+void _LOOPBUTTONHANDLER_WRAPPER_NEXT(void) { t3serialserver.next(); };
+void _LOOPBUTTONHANDLER_WRAPPER_UP(void) { t3serialserver.up(); };
+void _LOOPBUTTONHANDLER_WRAPPER_DOWN(void) { t3serialserver.down(); };
 
-  Serial.begin(9600);
-
-  // create object of T3SerialServer class
-  T3SerialServer tss;
-
-
-  
-
-  
-  char *ftop = new char;
- // char *fbottom = new char;
+void (*_LOOPBUTTONHANDLERS_WRAPPER[5])(void) = {
+    &_LOOPBUTTONHANDLER_WRAPPER_OKAY, &_LOOPBUTTONHANDLER_WRAPPER_BACK,
+    &_LOOPBUTTONHANDLER_WRAPPER_NEXT, &_LOOPBUTTONHANDLER_WRAPPER_UP,
+    &_LOOPBUTTONHANDLER_WRAPPER_DOWN};
+char _LCD_BUFFER[7] = "T3HWNC";
   
   ezButton okButton(2); // OK button is pin 2
   ezButton backButton(3); // Back button is pin 3
@@ -28,15 +42,28 @@ void setup() {
   ezButton downButton(6); // Down button is pin 6
   
   
-  void (*_LOOPBUTTONHANDLERS_WRAPPER[5])(void) = {
-      &_LOOPBUTTONHANDLER_WRAPPER_OKAY, &_LOOPBUTTONHANDLER_WRAPPER_BACK, 
-      &_LOOPBUTTONHANDLER_WRAPPER_NEXT, &_LOOPBUTTONHANDLER_WRAPPER_UP, 
-      &_LOOPBUTTONHANDLER_WRAPPER_DOWN, 
-    }
   
   
+void setup() {
+  // put your setup code here, to run once:
+
+  Serial.begin(9600);
+
+  lcd.init();
+  lcd.backlight();
+  lcd.clear();
   
   
+
+
+
+
+  
+
+  
+ // char *ftop = new char;
+ // char *fbottom = new char;
+
   
 
 }
@@ -48,11 +75,11 @@ void loop() {
   okButton.loop();
   
   if (okButton.isPressed()) {
-    (_LOOPBUTTONSHANDLERS_WRAPPER[0])();
+    (_LOOPBUTTONHANDLERS_WRAPPER[0])();
 
-    tss.flush(ftop, fbottom);
+    t3serialserver.flush(_LCD_BUFFER);
     lcd.setCursor(0,0);
-    lcd.print(*ftop);
+    lcd.print((char *)_LCD_BUFFER);
     lcd.setCursor(0,1);
    // lcd.print(*fbottom);
   }
@@ -61,11 +88,15 @@ void loop() {
   backButton.loop();
 
   if (backButton.isPressed()) {
+    //Serial.println("This is a test");
+    lcd.setCursor(0,1);
+    //lcd.print("12345");
     (_LOOPBUTTONHANDLERS_WRAPPER[1])();
     
-    tss.flush(ftop);
+    t3serialserver.flush(_LCD_BUFFER);
     lcd.setCursor(0,0);
-    lcd.print(*ftop);
+    lcd.print((char *)_LCD_BUFFER);
+    //lcd.print("12345");
     lcd.setCursor(0,1);
    // lcd.print(*fbottom);
       
@@ -78,9 +109,9 @@ void loop() {
   if (nextButton.isPressed()) {
     (_LOOPBUTTONHANDLERS_WRAPPER[2])();
     
-    tss.flush(ftop);
+    t3serialserver.flush(_LCD_BUFFER);
     lcd.setCursor(0,0);
-    lcd.print(*ftop);
+    lcd.print((char *)_LCD_BUFFER);
     lcd.setCursor(0,1);
   //  lcd.print(*fbottom);
   }
@@ -92,9 +123,9 @@ void loop() {
   if (upButton.isPressed()) {
     (_LOOPBUTTONHANDLERS_WRAPPER[3])();
     
-    tss.flush(ftop);
+    t3serialserver.flush(_LCD_BUFFER);
     lcd.setCursor(0,0);
-    lcd.print(*ftop);
+    lcd.print((char *)_LCD_BUFFER);
     lcd.setCursor(0,1);
    // lcd.print(*fbottom);
   }
@@ -107,9 +138,10 @@ void loop() {
   if (downButton.isPressed()) {
     (_LOOPBUTTONHANDLERS_WRAPPER[4])();
     
-    tss.flush(ftop);
+    t3serialserver.flush(_LCD_BUFFER);
     lcd.setCursor(0,0);
-    lcd.print(*ftop);
+    //lcd.print("Hello world");
+    lcd.print((char *)_LCD_BUFFER);
     lcd.setCursor(0,1);
   //  lcd.print(*fbottom);
   }
